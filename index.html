@@ -5,13 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CardLocker – Secure Offline Credit Card Storage</title>
   <style>
-    /* Reset and base styles */
+    /* =========== Reset & Base Styles =========== */
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
-
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: linear-gradient(to bottom right, #f0f4f8, #d9e2ec);
@@ -20,23 +19,19 @@
       display: flex;
       flex-direction: column;
     }
-
     header {
       background-color: #1a73e8;
       color: white;
       padding: 2rem 1rem;
       text-align: center;
     }
-
     header h1 {
       font-size: 2.5rem;
       margin-bottom: 0.5rem;
     }
-
     header p {
       font-size: 1.2rem;
     }
-
     main {
       flex: 1;
       display: grid;
@@ -46,25 +41,21 @@
       max-width: 1200px;
       margin: 0 auto;
     }
-
     section {
       background-color: white;
       border-radius: 8px;
       padding: 2rem;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-
     section h2 {
       font-size: 1.5rem;
       margin-bottom: 1rem;
       color: #1a73e8;
     }
-
     section p {
       margin-bottom: 1.5rem;
       line-height: 1.6;
     }
-
     footer {
       background-color: #f1f3f4;
       text-align: center;
@@ -72,7 +63,63 @@
       font-size: 0.9rem;
       color: #555;
     }
-
+    /* Modal backdrop & container */
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal {
+      background: white;
+      border-radius: 8px;
+      max-width: 500px;
+      width: 90%;
+      padding: 1.5rem;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .modal h3 {
+      margin-bottom: 1rem;
+      color: #1a73e8;
+    }
+    .modal p {
+      margin-bottom: 1rem;
+    }
+    .modal button.close-btn {
+      background: #1a73e8;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    /* License Verification Form */
+    #license-form {
+      margin-top: 2rem;
+    }
+    #license-form input {
+      width: 100%;
+      padding: 0.5rem;
+      margin-bottom: 0.75rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #license-form button {
+      background: #1a73e8;
+      color: white;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #license-result {
+      margin-top: 1rem;
+      font-weight: bold;
+    }
     /* Responsive adjustments */
     @media (max-width: 768px) {
       main {
@@ -83,34 +130,84 @@
   </style>
 </head>
 <body>
+  <!-- ========== Header ========== -->
   <header>
     <h1>CardLocker</h1>
     <p>Secure Offline Credit Card Storage for macOS</p>
   </header>
 
+  <!-- ========== Main Content ========== -->
   <main>
     <!-- Subscription Section -->
     <section>
       <h2>Subscribe for Full Access</h2>
-      <p>Enjoy unlimited access to all features with our subscription plan.</p>
+      <p>Enjoy unlimited features with our monthly subscription plan. After payment, you’ll receive a license key via email and can download the latest CardLocker app immediately.</p>
       <div id="paypal-button-container-subscribe"></div>
     </section>
 
     <!-- One-Time Purchase Section -->
     <section>
       <h2>One-Time Purchase</h2>
-      <p>Prefer a one-time payment? Get lifetime access with a single purchase.</p>
+      <p>Prefer a one-time payment? Get lifetime access with a single purchase. You’ll receive a unique license key via email and download instructions right away.</p>
       <div id="paypal-button-container-onetime"></div>
     </section>
   </main>
 
+  <!-- ========== License Verification Section ========== -->
+  <section style="max-width:600px; margin: 2rem auto 0; background:#fff; border-radius:8px; padding:2rem; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+    <h2>Verify Your License Key</h2>
+    <p>If you already have a license key, enter it below along with your email to unlock CardLocker.</p>
+    <form id="license-form">
+      <input type="email" id="verify-email" placeholder="Email used at purchase" required />
+      <input type="text" id="verify-key" placeholder="Enter your license key" required />
+      <button type="submit">Verify License</button>
+    </form>
+    <div id="license-result"></div>
+  </section>
+
+  <!-- ========== Thank-You / Download Modal ========== -->
+  <div class="modal-backdrop" id="thankyou-modal">
+    <div class="modal">
+      <h3>Thank You for Your Purchase!</h3>
+      <p id="modal-message">
+        A license key has been emailed to you at <span id="customer-email"></span>. Your key is:
+      </p>
+      <p><strong id="customer-license" style="font-size:1.2rem;"></strong></p>
+      <p>You can download CardLocker for macOS here:</p>
+      <p><a id="download-link" href="#" style="color:#1a73e8; text-decoration:underline;">Download CardLocker</a></p>
+      <button class="close-btn" id="close-modal">Close</button>
+    </div>
+  </div>
+
+  <!-- ========== Footer ========== -->
   <footer>
     &copy; 2025 CardLocker. All rights reserved.
   </footer>
 
-  <!-- PayPal SDK for Subscription -->
+  <!-- ========== PayPal SDKs ========== -->
+  <!-- Subscription SDK -->
   <script src="https://www.paypal.com/sdk/js?client-id=AWx0Fkp-mTSlluAReoXDXFPd1OEWWqsCnhHyTQgTI45sQ_dmap1iqLfJGrH_Bo_wny3-N2U-IOnDZ4ka&vault=true&intent=subscription"></script>
+  <!-- One-Time Purchase SDK -->
+  <script src="https://www.paypal.com/sdk/js?client-id=BAAgb51-SAOh9DHzMLyYn1WbHBnC3IED6ll60NBiqpTRoPoscu3atWSX7_1je-bBhapKs0u8uxC4FngVUo&components=hosted-buttons&enable-funding=venmo&currency=USD"></script>
+
   <script>
+    /********************************************************
+     * Helper: Show “Thank You” Modal with license & link
+     ********************************************************/
+    function showThankYouModal(email, licenseKey) {
+      document.getElementById('customer-email').textContent = email;
+      document.getElementById('customer-license').textContent = licenseKey;
+      // TODO: Replace with your actual DMG / .zip download URL
+      document.getElementById('download-link').href = 'https://example.com/CardLocker-latest.dmg';
+      document.getElementById('thankyou-modal').style.display = 'flex';
+    }
+    document.getElementById('close-modal').addEventListener('click', () => {
+      document.getElementById('thankyou-modal').style.display = 'none';
+    });
+
+    /********************************************************
+     * 1) PAYPAL SUBSCRIPTION BUTTON
+     ********************************************************/
     paypal.Buttons({
       style: {
         shape: 'rect',
@@ -124,18 +221,125 @@
         });
       },
       onApprove: function(data, actions) {
-        alert('Thank you for subscribing! Your subscription ID is: ' + data.subscriptionID);
-        // Implement post-subscription logic here
+        // 1) Retrieve payer email from PayPal
+        actions.subscription.get().then(function(details) {
+          const payerEmail = details.subscriber.email_address || details.subscriber.name.email; 
+          // 2) Generate license key via backend
+          fetch('/api/generate-license', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: payerEmail,
+              purchaseType: 'subscription',
+              paypalSubscriptionID: data.subscriptionID
+            })
+          })
+          .then(res => res.json())
+          .then(json => {
+            const licenseKey = json.licenseKey; // e.g. "ABCD-1234-WXYZ"
+            // 3) Send license via email (optional separate endpoint)
+            fetch('/api/send-license-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: payerEmail,
+                licenseKey: licenseKey
+              })
+            });
+            // 4) Show modal with download link & license
+            showThankYouModal(payerEmail, licenseKey);
+          })
+          .catch(err => {
+            console.error('License generation failed:', err);
+            alert('Something went wrong generating your license. Please contact support.');
+          });
+        });
+      },
+      onError: function(err) {
+        console.error('PayPal subscribe error:', err);
+        alert('Subscription failed. Please try again.');
       }
     }).render('#paypal-button-container-subscribe');
-  </script>
 
-  <!-- PayPal SDK for One-Time Purchase -->
-  <script src="https://www.paypal.com/sdk/js?client-id=BAAgb51-SAOh9DHzMLyYn1WbHBnC3IED6ll60NBiqpTRoPoscu3atWSX7_1je-bBhapKs0u8uxC4FngVUo&components=hosted-buttons&enable-funding=venmo&currency=USD"></script>
-  <script>
+    /********************************************************
+     * 2) PAYPAL ONE-TIME PURCHASE BUTTON
+     ********************************************************/
     paypal.HostedButtons({
-      hostedButtonId: '8D52BLYAL3DF2'
+      hostedButtonId: '8D52BLYAL3DF2',
+      onApprove: function(data, actions) {
+        // Note: Hosted Buttons don’t expose details() the same way; 
+        // instead rely on your IPN/webhook (or PayPal callback) server-side 
+        // to capture buyer info. For demo, we’ll prompt email manually.
+        const payerEmail = prompt('To complete your license, please enter the email you used for PayPal:');
+        if (!payerEmail) {
+          return alert('Email is required to send you a license key.');
+        }
+        // 1) Generate license key
+        fetch('/api/generate-license', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: payerEmail,
+            purchaseType: 'one-time',
+            paypalOrderID: data.orderID    // Hosted Buttons set orderID implicitly
+          })
+        })
+        .then(res => res.json())
+        .then(json => {
+          const licenseKey = json.licenseKey;
+          // 2) Email license
+          fetch('/api/send-license-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: payerEmail, licenseKey: licenseKey })
+          });
+          // 3) Show modal
+          showThankYouModal(payerEmail, licenseKey);
+        })
+        .catch(err => {
+          console.error('License generation failed:', err);
+          alert('Could not generate your license. Please contact support.');
+        });
+      },
+      onError: function(err) {
+        console.error('PayPal one-time error:', err);
+        alert('Purchase failed. Please try again.');
+      }
     }).render('#paypal-button-container-onetime');
+
+
+    /********************************************************
+     * 3) LICENSE VERIFICATION FORM
+     ********************************************************/
+    document.getElementById('license-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const email = document.getElementById('verify-email').value.trim();
+      const key   = document.getElementById('verify-key').value.trim();
+
+      if (!email || !key) {
+        return alert('Both email and license key are required.');
+      }
+      fetch('/api/verify-license', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, licenseKey: key })
+      })
+      .then(res => res.json())
+      .then(json => {
+        const resultDiv = document.getElementById('license-result');
+        if (json.valid) {
+          resultDiv.style.color = 'green';
+          resultDiv.textContent = '✅ License is valid! You may now download CardLocker.';
+        } else {
+          resultDiv.style.color = 'red';
+          resultDiv.textContent = '❌ Invalid license or email. Please check and try again.';
+        }
+      })
+      .catch(err => {
+        console.error('License verification failed:', err);
+        alert('Error verifying license. Please try again later.');
+      });
+    });
   </script>
 </body>
 </html>
