@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CardLocker – Secure Offline Credit Card Storage</title>
+  <style>
+    /* Reset and base styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to bottom right, #f0f4f8, #d9e2ec);
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background-color: #1a73e8;
+      color: white;
+      padding: 2rem 1rem;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    header p {
+      font-size: 1.2rem;
+    }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      padding: 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    section {
+      background-color: white;
+      border-radius: 8px;
+      padding: 2rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    section h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: #1a73e8;
+    }
+
+    section p {
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+
+    footer {
+      background-color: #f1f3f4;
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      main {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CardLocker</h1>
+    <p>Secure Offline Credit Card Storage for macOS</p>
+  </header>
+
+  <main>
+    <!-- Subscription Section -->
+    <section>
+      <h2>Subscribe for Full Access</h2>
+      <p>Enjoy unlimited access to all features with our subscription plan.</p>
+      <div id="paypal-button-container-subscribe"></div>
+    </section>
+
+    <!-- One-Time Purchase Section -->
+    <section>
+      <h2>One-Time Purchase</h2>
+      <p>Prefer a one-time payment? Get lifetime access with a single purchase.</p>
+      <div id="paypal-button-container-onetime"></div>
+    </section>
+  </main>
+
+  <footer>
+    &copy; 2025 CardLocker. All rights reserved.
+  </footer>
+
+  <!-- PayPal SDK for Subscription -->
+  <script src="https://www.paypal.com/sdk/js?client-id=AWx0Fkp-mTSlluAReoXDXFPd1OEWWqsCnhHyTQgTI45sQ_dmap1iqLfJGrH_Bo_wny3-N2U-IOnDZ4ka&vault=true&intent=subscription"></script>
+  <script>
+    paypal.Buttons({
+      style: {
+        shape: 'rect',
+        color: 'gold',
+        layout: 'vertical',
+        label: 'subscribe'
+      },
+      createSubscription: function(data, actions) {
+        return actions.subscription.create({
+          plan_id: 'P-0UR33161F2240691LNA7RJ4A'
+        });
+      },
+      onApprove: function(data, actions) {
+        alert('Thank you for subscribing! Your subscription ID is: ' + data.subscriptionID);
+        // Implement post-subscription logic here
+      }
+    }).render('#paypal-button-container-subscribe');
+  </script>
+
+  <!-- PayPal SDK for One-Time Purchase -->
+  <script src="https://www.paypal.com/sdk/js?client-id=BAAgb51-SAOh9DHzMLyYn1WbHBnC3IED6ll60NBiqpTRoPoscu3atWSX7_1je-bBhapKs0u8uxC4FngVUo&components=hosted-buttons&enable-funding=venmo&currency=USD"></script>
+  <script>
+    paypal.HostedButtons({
+      hostedButtonId: '8D52BLYAL3DF2'
+    }).render('#paypal-button-container-onetime');
+  </script>
+</body>
+</html>
