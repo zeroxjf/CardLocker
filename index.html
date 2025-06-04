@@ -531,24 +531,35 @@
             return actions.subscription.create({ plan_id: 'P-0UR33161F2240691LNA7RJ4A' });
           },
           onApprove(data) {
-            // Call server to create license and get signed URL
-            fetch('/api/purchase', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: email })
-            })
-              .then(res => {
-                if (!res.ok) throw new Error('Server error ' + res.status);
-                return res.json();
-              })
-              .then(({ licenseKey, signedUrl }) => {
-                showThankYouModal(email, licenseKey);
-                window.location.href = signedUrl;
-              })
-              .catch(err => {
-                console.error('Purchase endpoint error:', err);
-                alert('Could not complete purchase.');
-              });
+            // Show “Thank You” modal with placeholder
+            showThankYouModal(email, 'Generating license…');
+
+            // Poll every 2 seconds to check if Firestore has the license
+            let attempts = 0;
+            const maxAttempts = 15; // 15 × 2s = 30 seconds
+            const intervalId = setInterval(async () => {
+              attempts++;
+              try {
+                const resp = await fetch(`/api/check-license?email=${encodeURIComponent(email)}`);
+                if (!resp.ok) throw new Error('Server error ' + resp.status);
+                const { found, licenseKey, signedUrl } = await resp.json();
+
+                if (found) {
+                  clearInterval(intervalId);
+                  // Update modal with actual license key
+                  document.getElementById('customer-license').textContent = licenseKey;
+                  // Redirect to download
+                  window.location.href = signedUrl;
+                } else if (attempts >= maxAttempts) {
+                  clearInterval(intervalId);
+                  alert('License issuance is taking longer than expected. Please contact support.');
+                }
+              } catch (err) {
+                console.error('Error checking license:', err);
+                clearInterval(intervalId);
+                alert('Could not verify license. Please contact support.');
+              }
+            }, 2000);
           },
           onError(err) {
             console.error('PayPal subscription error:', err);
