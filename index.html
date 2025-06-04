@@ -519,6 +519,17 @@
 </script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    // Function to display the thank you modal
+    function showThankYouModal(email, licenseKey) {
+      document.getElementById('customer-email').textContent = email;
+      document.getElementById('customer-license').textContent = licenseKey;
+      const backdrop = document.getElementById('thankyou-modal');
+      backdrop.classList.add('show');
+      // Close button handler
+      document.getElementById('close-modal').addEventListener('click', () => {
+        backdrop.classList.remove('show');
+      });
+    }
     // Helper to validate email format
     function isValidEmail(email) {
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
