@@ -4,21 +4,19 @@ import admin from 'firebase-admin';
 import { getDownloadUrl } from '@vercel/blob';
 
 //
-// 1) Initialize Firebase Admin (only once per cold start)
+// Load service account credentials from environment variable
 //
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.applicationDefault()
-    // ← in Vercel, set GOOGLE_APPLICATION_CREDENTIALS or use 
-    //    a service account JSON via Environment Variables. 
-    //   If you have already run “vercel env add GOOGLE_APPLICATION_CREDENTIALS” 
-    //   pointing to a service account with Firestore write rights, Admin will pick it up automatically.
+    credential: admin.credential.cert(serviceAccount)
   });
 }
 
 const db = admin.firestore();
 
 export default async function handler(req, res) {
+  console.log('purchase handler invoked, body:', req.body);
   // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -99,6 +97,6 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('purchase.js error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 }
