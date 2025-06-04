@@ -68,28 +68,19 @@ export default async function handler(req, res) {
 
   // 3c) Perform signature verification
   try {
-    console.log('🔍 Starting signature verification. verifyRequest:', JSON.stringify(verifyRequest));
-    const request = new CheckoutNodeJssdk.notification.webhooks.VerifyWebhookSignatureRequest();
+    const request = new CheckoutNodeJssdk.notification.webhookEvent.VerifyWebhookSignatureRequest();
     request.requestBody(verifyRequest);
-    console.log('🔍 VerifyWebhookSignatureRequest built, sending to PayPal...');
 
     const response = await paypalClient.execute(request);
-    console.log('🔍 PayPal signature verification response:', JSON.stringify(response.result));
     const verificationStatus = response.result.verification_status;
     console.log('🔍 PayPal Webhook verification status:', verificationStatus);
 
     if (verificationStatus !== 'SUCCESS') {
-      console.error('❌ Invalid PayPal webhook signature. verificationStatus:', verificationStatus);
+      console.error('❌ Invalid PayPal webhook signature');
       return res.status(400).json({ error: 'Webhook signature verification failed' });
     }
   } catch (verifyErr) {
     console.error('❌ Error verifying PayPal webhook signature:', verifyErr);
-    if (verifyErr.statusCode) {
-      console.error('   HTTP status code:', verifyErr.statusCode);
-    }
-    if (verifyErr.message) {
-      console.error('   Error message:', verifyErr.message);
-    }
     return res.status(500).json({ error: 'Error verifying webhook signature', details: verifyErr.message });
   }
 
