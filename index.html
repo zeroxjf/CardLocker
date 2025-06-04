@@ -381,6 +381,8 @@
           </div>
         </div>
 
+        <button id="test-purchase" style="margin-top: 1rem; background-color: #007aff; color: #ffffff; border: none; border-radius: 6px; padding: 0.75rem 1rem; cursor: pointer;">Test Purchase</button>
+
         <!-- Key Features -->
         <div class="card" id="features">
           <h2>Key Features</h2>
@@ -655,6 +657,42 @@
         renderLifetimeButton(email);
       }
     });
+  // Test purchase simulation
+  document.getElementById('test-purchase').addEventListener('click', async () => {
+    const email = prompt('Enter test email for purchase simulation:');
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      console.error('Invalid email entered.');
+      return;
+    }
+    const trimmedEmail = email.trim();
+    console.log('Simulating purchase for email:', trimmedEmail);
+    try {
+      const snapshot = await db.collection('licenses').where('email', '==', trimmedEmail).get();
+      console.log('Existing licenses found:', snapshot.size);
+      if (snapshot.size >= 5) {
+        alert('Maximum of 5 licenses per email reached.');
+        return;
+      }
+      const licenseKey = generateLicenseKey();
+      console.log('Generated license key:', licenseKey);
+      await db.collection('licenses').add({
+        email: trimmedEmail,
+        licenseKey: licenseKey,
+        purchaseType: 'test-simulation',
+        paypalID: 'TEST-' + Date.now(),
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      console.log('License document written to Firestore.');
+      showThankYouModal(trimmedEmail, licenseKey);
+      console.log('Thank you modal displayed.');
+      const response = await fetch(`/api/get-signed-url?file=CardLocker-qNcAFlKgf0ku0HXcgI0DXm3utFmtoZ.dmg`);
+      const data = await response.json();
+      console.log('Received signed URL:', data.signedUrl);
+      window.location.href = data.signedUrl;
+    } catch (err) {
+      console.error('Test purchase simulation error:', err);
+    }
+  });
   });
 </script>
 </body>
