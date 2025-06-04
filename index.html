@@ -315,6 +315,23 @@
   </style>
 </head>
 <body>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script>
+    // TODO: Replace these with your Firebase project configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAL6r2dwjqRF2Mv01B3GHfZSxNBrq7yWGU",
+      authDomain: "cardlocker-bd09a.firebaseapp.com",
+      projectId: "cardlocker-bd09a",
+      storageBucket: "cardlocker-bd09a.firebasestorage.app",
+      messagingSenderId: "729816549959",
+      appId: "1:729816549959:web:4e34482d004dcf3a6cff62"
+    };
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
   <div class="container">
     <!-- ===== Navbar ===== -->
     <nav class="navbar">
