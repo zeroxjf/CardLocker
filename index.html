@@ -351,10 +351,15 @@
       background-color: #005bb5;
     }
   </style>
-<!-- Single PayPal SDK without vault to enable guest checkout for both -->
+<!-- PayPal SDK for one-time payments (guest checkout) -->
 <script
-  src="https://www.paypal.com/sdk/js?client-id=ARmFJUNL-2grFv62pdVgTgbaulkPP-lj2_3yEpzjdtz6RWt-h7ISTHqKTolA715eeR-74mIyu-MNE6Mp&vault=false&disable-funding=credit"
-  data-namespace="paypal"
+  src="https://www.paypal.com/sdk/js?client-id=ARmFJUNL-2grFv62pdVgTgbaulkPP-lj2_3yEpzjdtz6RWt-h7ISTHqKTolA715eeR-74mIyu-MNE6Mp&vault=false&disable-funding=credit,card"
+  data-namespace="paypalBuy"
+></script>
+<!-- PayPal SDK for subscriptions (with guest checkout enabled) -->
+<script
+  src="https://www.paypal.com/sdk/js?client-id=ARmFJUNL-2grFv62pdVgTgbaulkPP-lj2_3yEpzjdtz6RWt-h7ISTHqKTolA715eeR-74mIyu-MNE6Mp&vault=true&intent=subscription"
+  data-namespace="paypalSub"
 ></script>
 </head>
 <body>
@@ -571,7 +576,7 @@
     // Render subscription button with guest checkout enabled
     function renderSubscriptionButton(email) {
       if (!subContainer.hasChildNodes()) {
-        paypal.Buttons({
+        paypalSub.Buttons({
           style: { 
             shape: 'rect', 
             color: 'blue', 
@@ -589,8 +594,7 @@
                 landing_page: 'BILLING',
                 user_action: 'SUBSCRIBE_NOW',
                 payment_method: {
-                  payee_preferred: 'IMMEDIATE_PAYMENT_REQUIRED',
-                  payer_selected: 'PAYPAL'
+                  payee_preferred: 'UNRESTRICTED'
                 },
                 shipping_preference: 'NO_SHIPPING'
               }
@@ -650,7 +654,7 @@
     // Render lifetime button with guest checkout enabled
     function renderLifetimeButton(email) {
       if (!lifeContainer.hasChildNodes()) {
-        paypal.Buttons({
+        paypalBuy.Buttons({
           style: { 
             shape: 'rect', 
             color: 'gold', 
@@ -671,7 +675,7 @@
                 landing_page: 'BILLING',
                 user_action: 'PAY_NOW',
                 payment_method: {
-                  payee_preferred: 'IMMEDIATE_PAYMENT_REQUIRED'
+                  payee_preferred: 'UNRESTRICTED'
                 },
                 shipping_preference: 'NO_SHIPPING'
               }
