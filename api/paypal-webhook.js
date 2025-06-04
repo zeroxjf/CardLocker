@@ -1,673 +1,409 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CardLocker for macOS</title>
-  <style>
-    /* =========== Reset & Base Styles =========== */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    html, body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
-                   Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-      background-color: #f9f9fb;
-      color: #1c1c1e;
-      -webkit-font-smoothing: antialiased;
-      min-height: 100vh;
-    }
-    a {
-      color: #007aff;
-      text-decoration: none;
-      transition: color 0.2s ease;
-    }
-    a:hover {
-      color: #005bb5;
-      text-decoration: underline;
-    }
+// File: api/paypal-webhook.js
 
-    /* ===== Container ===== */
-    .container {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 0 1rem;
-    }
+import { getDownloadUrl } from '@vercel/blob';
+import admin from 'firebase-admin';
+import checkoutNodeJssdk from '@paypal/checkout-server-sdk';
 
-    /* ===== Navbar ===== */
-    .navbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1rem 0;
-      background-color: #ffffff;
-      border-bottom: 1px solid #e0e0e5;
-    }
-    .nav-brand {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #007aff;
-    }
-    .nav-links {
-      list-style: none;
-      display: flex;
-      gap: 2rem;
-    }
-    .nav-links li a {
-      font-weight: 500;
-      padding: 0.5rem 0;
-      color: #1c1c1e;
-      transition: color 0.2s ease;
-    }
-    .nav-links li a:hover {
-      color: #007aff;
-    }
+// 1) Initialize PayPal environment (Sandbox vs Live)
+let paypalClient;
+(function initPayPalClient() {
+  const clientId = process.env.PAYPAL_CLIENT_ID;
+  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    console.error('❌ Missing PayPal credentials in env vars');
+    return;
+  }
 
-    /* ===== Hero Section ===== */
-    .hero {
-      text-align: center;
-      padding: 3rem 1rem;
-      background-color: #ffffff;
-      margin-bottom: 2rem;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-    .hero h1.title-with-icon {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 2.5rem;
-      font-weight: 700;
-      color: #0056b3;
-    }
-    .hero p.intro {
-      margin-top: 1rem;
-      font-size: 1.125rem;
-      line-height: 1.5;
-      color: #3c3c43;
-      max-width: 800px;
-      margin-left: auto;
-      margin-right: auto;
-    }
+  const environment =
+    process.env.NODE_ENV === 'production'
+      ? new checkoutNodeJssdk.core.LiveEnvironment(clientId, clientSecret)
+      : new checkoutNodeJssdk.core.SandboxEnvironment(clientId, clientSecret);
 
-    /* ===== Main Layout ===== */
-    main {
-      display: flex;
-      justify-content: space-between;
-      gap: 3rem;
-      flex-wrap: wrap;
-      margin-bottom: 3rem;
-    }
-    .card-container {
-      flex: 1 1 600px;
-      display: flex;
-      flex-direction: column;
-      gap: 2rem;
-    }
-    .side-panel {
-      flex: 0 0 350px;
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 2rem;
-    }
+  paypalClient = new checkoutNodeJssdk.core.PayPalHttpClient(environment);
+})();
 
-    /* ===== Card Styling & Hover Effects ===== */
-    .card {
-      background-color: #ffffff;
-      border-radius: 12px;
-      padding: 2rem;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-    }
-    .card h2 {
-      font-size: 1.5rem;
-      margin-bottom: 1rem;
-      color: #0056b3;
-    }
-    .card p,
-    .card ul,
-    .card ul li {
-      font-size: 1rem;
-      line-height: 1.6;
-      color: #2c2c2e;
-    }
-    .card ul {
-      padding-left: 1.25rem;
-    }
-    .card ul li {
-      margin-bottom: 0.75rem;
-    }
-
-    /* ===== Screenshot & Icon Adjustments ===== */
-    .app-icon-inline {
-      width: 40px;
-      height: 40px;
-    }
-    .screenshot {
-      width: 100%;
-      max-width: 100%;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-      margin-bottom: 1rem;
-      object-fit: cover;
-    }
-
-    /* ===== Footer ===== */
-    .site-footer {
-      background-color: #f2f2f7;
-      border-top: 1px solid #d1d1d6;
-      padding: 1.5rem 0;
-      margin-top: 3rem;
-    }
-    .footer-container {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-    .footer-links a {
-      color: #3c3c43;
-      text-decoration: none;
-      margin: 0 0.5rem;
-      font-weight: 500;
-    }
-    .footer-links a:hover {
-      color: #007aff;
-    }
-
-    /* Section Spacing */
-    #features, 
-    #how-it-works, 
-    #purchase, 
-    #resend {
-      margin-bottom: 2rem;
-    }
-
-    /* Privacy disclaimer */
-    .privacy-disclaimer {
-      font-size: 0.875rem;
-      color: #6e6e73;
-      font-style: italic;
-      text-align: center;
-      margin: 2rem 1rem 0;
-    }
-
-    /* ===== Plan Options Styling ===== */
-    /* ===== Modal Backdrop ===== */
-    .modal-backdrop {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-    .modal-backdrop.show {
-      display: flex;
-      opacity: 1;
-    }
-    .plan-options {
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-      margin-top: 1rem;
-    }
-    .plan {
-      flex: 1 1 150px;
-      background-color: #f9f9f9;
-      border: 1px solid #d1d1d6;
-      border-radius: 10px;
-      padding: 1rem 1rem 6rem;
-      text-align: center;
-      position: relative;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    }
-    .plan:hover {
-      border-color: #007aff;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
-    .plan h3 {
-      font-size: 1.25rem;
-      margin-bottom: 0.75rem;
-      color: #1c1c1e;
-    }
-    .plan p {
-      font-size: 1rem;
-      margin-bottom: 1rem;
-      color: #3c3c43;
-    }
-    .plan .badge {
-      position: absolute;
-      top: -0.5rem;
-      right: -0.5rem;
-      background-color: #007aff;
-      color: #ffffff;
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 0.25rem 0.5rem;
-      border-radius: 8px;
-    }
-    .plan-select {
-      background-color: #007aff;
-      color: #ffffff;
-      border: none;
-      border-radius: 8px;
-      padding: 0.75rem 1rem;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-    .plan-select:hover {
-      background-color: #005bb5;
-    }
-    .email-field {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      width: 100%;
-      margin-top: 1rem;
-    }
-    .email-field input {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 0.75rem;
-      border: 1px solid #d1d1d6;
-      border-radius: 6px;
-      font-size: 1rem;
-    }
-    .email-field a {
-      display: block;
-      width: 100%;
-      text-align: center;
-      background-color: #34c759;
-      color: #ffffff;
-      border: none;
-      border-radius: 8px;
-      padding: 0.75rem;
-      font-size: 1rem;
-      text-decoration: none;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-    .email-field a:disabled,
-    .email-field a[disabled] {
-      background-color: #a1a1aa;
-      cursor: default;
-      pointer-events: none;
-    }
-    .email-field a:not([disabled]):hover {
-      background-color: #28a745;
-    }
-    /* Modal window styling */
-    .modal {
-      background-color: #ffffff;
-      border-radius: 12px;
-      padding: 2rem;
-      max-width: 400px;
-      width: 90%;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-    .modal h3 {
-      margin-bottom: 1rem;
-      color: #1c1c1e;
-    }
-    .modal p, .modal a, .modal strong {
-      color: #1c1c1e;
-    }
-    .modal a#download-link {
-      display: inline-block;
-      margin-top: 0.5rem;
-      color: #007aff;
-      text-decoration: none;
-    }
-    .modal a#download-link:hover {
-      text-decoration: underline;
-    }
-    .close-btn {
-      margin-top: 1.5rem;
-      background-color: #007aff;
-      color: #ffffff;
-      border: none;
-      border-radius: 6px;
-      padding: 0.75rem 1.5rem;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-    .close-btn:hover {
-      background-color: #005bb5;
-    }
-  </style>
-  <script src="https://www.paypal.com/sdk/js?client-id=ARmFJUNL-2grFv62pdVgTgbaulkPP-lj2_3yEpzjdtz6RWt-h7ISTHqKTolA715eeR-74mIyu-MNE6Mp&vault=true"></script>
-</head>
-<body>
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-  <script>
-    // TODO: Replace these with your Firebase project configuration
-    const firebaseConfig = {
-      apiKey: "AIzaSyAL6r2dwjqRF2Mv01B3GHfZSxNBrq7yWGU",
-      authDomain: "cardlocker-bd09a.firebaseapp.com",
-      projectId: "cardlocker-bd09a",
-      storageBucket: "cardlocker-bd09a.firebasestorage.app",
-      messagingSenderId: "729816549959",
-      appId: "1:729816549959:web:4e34482d004dcf3a6cff62"
-    };
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    // Generate a simple random license key
-    function generateLicenseKey() {
-      // Example: return a random 16-character hexadecimal string
-      return 'xxxx-xxxx-xxxx-xxxx'.replace(/x/g, () =>
-        Math.floor(Math.random() * 16).toString(16)
-      ).toUpperCase();
-    }
-  </script>
-  <div class="container">
-    <!-- ===== Navbar ===== -->
-    <nav class="navbar">
-      <div class="nav-brand">CardLocker</div>
-      <ul class="nav-links">
-        <li><a href="#features">Features</a></li>
-        <li><a href="#how-it-works">How It Works</a></li>
-        <li><a href="#pricing">Pricing</a></li>
-        <li><a href="#purchase">Purchase</a></li>
-        <li><a href="#resend">Resend Code</a></li>
-      </ul>
-    </nav>
-
-    <!-- ===== Hero Section ===== -->
-    <header id="featured" class="hero">
-      <h1 class="title-with-icon">
-        <img src="cardmock2.png" alt="CardLocker Icon" class="app-icon-inline" />
-        CardLocker for macOS
-      </h1>
-      <p class="intro">
-        CardLocker is the card manager you’ve always wished Apple would build. 
-        No more hunting through Safari’s Autofill or digging out your physical wallet. 
-        Inspired by the clean design and functionality of Apple’s Passwords app, CardLocker 
-        brings that same polished, native feel to your credit and debit cards.
-      </p>
-    </header>
-
-    <!-- ===== Main Content ===== -->
-    <main>
-      <div class="card-container">
-        <div class="card" id="pricing">
-          <h2>Pricing</h2>
-          <p>Choose the plan that suits you. No email required to view these options:</p>
-          <div class="plan-options">
-            <div class="plan">
-              <h3>Subscription</h3>
-              <p><strong>$1.99/month</strong> – Cancel anytime</p>
-              <button class="plan-select" data-plan="subscribe">Select</button>
-              <div class="email-field" style="display: none;">
-                <input type="email" id="email-subscribe" name="email-subscribe" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Enter your email" />
-                <div id="paypal-button-container-subscribe"></div>
-              </div>
-            </div>
-            <div class="plan">
-              <div class="badge">Best Value</div>
-              <h3>Lifetime License</h3>
-              <p><strong>$20</strong> – One-time payment</p>
-              <button class="plan-select" data-plan="lifetime">Select</button>
-              <div class="email-field" style="display: none;">
-                <input type="email" id="email-lifetime" name="email-lifetime" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Enter your email" />
-                <div id="paypal-container-8D52BLYAL3DF2"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-
-        <!-- Key Features -->
-        <div class="card" id="features">
-          <h2>Key Features</h2>
-          <ul>
-            <li><strong>Native macOS Experience:</strong> Tucked in your menu bar or standalone window—with familiar controls and smooth animations.</li>
-            <li><strong>Simple Card Entry:</strong> Tap “+” to enter nickname, number, expiry, CVV—then save in a native-style form.</li>
-            <li><strong>Secure Storage:</strong> Card numbers stay locked in your Keychain; only non-sensitive metadata travels over iCloud.</li>
-            <li><strong>Quick Access:</strong> Click to edit inline or enter Edit mode for bulk delete/recovery.</li>
-            <li><strong>Recovery Options:</strong> Deleted cards live in “Recently Deleted” for 30 days.</li>
-            <li><strong>Efficient Search and Organization:</strong> Lightning-fast search, filters (Credit, Debit, Rewards, Business, Deleted), and smart sorting.</li>
-            <li><strong>Customization:</strong> Dark Mode support and customizable category labels to fit right into macOS.</li>
-          </ul>
-        </div>
-
-        <div class="card" id="how-it-works">
-          <h2>How It Works</h2>
-          <p>CardLocker never transmits your raw card data anywhere. Here’s how it keeps your information secure:</p>
-          <ul>
-            <li><strong>Local Encryption:</strong> All card numbers are encrypted and stored in your macOS Keychain. Only your device’s secure enclave can decrypt the data.</li>
-            <li><strong>No Server Storage:</strong> We never upload your sensitive card details to any server. Only non-sensitive metadata (like nicknames and categories) can be optionally synced via iCloud.</li>
-            <li><strong>Open Source Transparency:</strong> The full source code is available on GitHub so you can audit every line: 
-              <a href="https://github.com/zeroxjf/CardLocker" target="_blank" rel="noopener">github.com/zeroxjf/CardLocker</a>.
-            </li>
-            <li><strong>Secure Key Generation:</strong> License keys are generated client-side and stored in Firestore associated only with your email; CardLocker never holds your payment credentials.</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="side-panel">
-        <img src="display1.png" alt="CardLocker Screenshot 1" class="screenshot" />
-        <img src="display2.png" alt="CardLocker Screenshot 2" class="screenshot" />
-
-
-        <div class="card license-section" id="resend">
-          <h2>Resend License Code</h2>
-          <p>Enter your email to have your license code resent to you.</p>
-          <form id="resend-form">
-            <input type="email" id="resend-email" placeholder="Enter your email" required />
-            <button type="submit">Resend License</button>
-          </form>
-          <div id="resend-result"></div>
-        </div>
-      </div>
-    </main>
-
-
-    <p class="privacy-disclaimer">
-      CardLocker is designed with your privacy in mind. The developer does not collect any data from this app. All sensitive information is securely stored in your device’s Keychain.
-    </p>
-
-    <!-- ===== Footer ===== -->
-    <footer class="site-footer">
-      <div class="footer-container">
-        <div>&copy; 2025 CardLocker. All rights reserved.</div>
-        <div class="footer-links">
-          <a href="#features">Features</a> |
-          <a href="#purchase">Purchase</a> |
-          <a href="#resend">Resend Code</a>
-        </div>
-      </div>
-    </footer>
-</div>
-  <div class="modal-backdrop" id="thankyou-modal">
-    <div class="modal">
-      <h3>Thank You for Your Purchase!</h3>
-      <p id="modal-message">
-        A license key has been emailed to you at <span id="customer-email"></span>. Your key is:
-      </p>
-      <p><strong id="customer-license"></strong></p>
-      <p>You can download CardLocker for macOS here:</p>
-      <p><a id="download-link" href="#">Download CardLocker</a></p>
-      <button class="close-btn" id="close-modal">Close</button>
-    </div>
-  </div>
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Function to display the thank you modal
-    function showThankYouModal(email, licenseKey) {
-      document.getElementById('customer-email').textContent = email;
-      document.getElementById('customer-license').textContent = licenseKey;
-      const backdrop = document.getElementById('thankyou-modal');
-      backdrop.classList.add('show');
-      // Close button handler
-      document.getElementById('close-modal').addEventListener('click', () => {
-        backdrop.classList.remove('show');
+// 2) Initialize Firebase Admin
+let db;
+(function initFirebaseAdmin() {
+  if (!admin.apps.length) {
+    try {
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
       });
+      db = admin.firestore();
+    } catch (e) {
+      console.error('❌ Error initializing Firebase Admin:', e);
     }
-    // Helper to validate email format
-    function isValidEmail(email) {
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    }
+  } else {
+    db = admin.firestore();
+  }
+})();
 
-    // Find all plan-select buttons
-    const planButtons = document.querySelectorAll('.plan-select');
-
-    planButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        // Hide all other email fields first
-        document.querySelectorAll('.email-field').forEach(field => {
-          field.style.display = 'none';
-        });
-
-        // Show the email field next to this button
-        const planDiv = btn.closest('.plan');
-        const emailField = planDiv.querySelector('.email-field');
-        emailField.style.display = 'flex';
-
-        // Focus the email input
-        const input = emailField.querySelector('input');
-        input.focus();
-
-        // Listen for input changes to validate email
-        input.addEventListener('input', () => {
-          if (isValidEmail(input.value.trim())) {
-            renderSubscriptionButton(input.value.trim());
-          }
-        });
-      });
+// Helper to get raw body
+function getRawBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', chunk => {
+      data += chunk;
     });
+    req.on('end', () => {
+      resolve(data);
+    });
+    req.on('error', err => {
+      reject(err);
+    });
+  });
+}
 
-    // Render PayPal buttons when purchase button is clicked
-    const subContainer = document.getElementById('paypal-button-container-subscribe');
-    const lifeContainer = document.getElementById('paypal-container-8D52BLYAL3DF2');
+// Helper to get PayPal access token
+async function getPayPalAccessToken() {
+  const authResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'}/v1/oauth2/token`, {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Accept-Language': 'en_US',
+      'Authorization': `Basic ${Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString('base64')}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: 'grant_type=client_credentials'
+  });
 
-    // Ensure PayPal SDK is loaded before rendering
-    function renderSubscriptionButton(email) {
-      if (!subContainer.hasChildNodes()) {
-        paypal.Buttons({
-          style: { shape: 'rect', color: 'blue', layout: 'vertical', label: 'subscribe' },
-          createSubscription(data, actions) {
-            return actions.subscription.create({ plan_id: 'P-0UR33161F2240691LNA7RJ4A' });
-          },
-          onApprove(data) {
-            // Show “Thank You” modal with placeholder
-            showThankYouModal(email, 'Generating license…');
+  if (!authResponse.ok) {
+    throw new Error(`Auth failed: ${authResponse.status}`);
+  }
 
-            // Poll every 2 seconds to check if Firestore has the license
-            let attempts = 0;
-            const maxAttempts = 15; // 15 × 2s = 30 seconds
-            const intervalId = setInterval(async () => {
-              attempts++;
-              try {
-                const resp = await fetch(`https://cardlocker.net/api/check-license?email=${encodeURIComponent(email)}`);
-                if (!resp.ok) throw new Error('Server error ' + resp.status);
-                const { found, licenseKey, signedUrl } = await resp.json();
+  const authData = await authResponse.json();
+  return authData.access_token;
+}
 
-                if (found) {
-                  clearInterval(intervalId);
-                  // Update modal with actual license key
-                  document.getElementById('customer-license').textContent = licenseKey;
-                  // Redirect to download
-                  window.location.href = signedUrl;
-                } else if (attempts >= maxAttempts) {
-                  clearInterval(intervalId);
-                  alert('License issuance is taking longer than expected. Please contact support.');
-                }
-              } catch (err) {
-                console.error('Error checking license:', err);
-                clearInterval(intervalId);
-                alert('Could not verify license. Please contact support.');
-              }
-            }, 2000);
-          },
-          onError(err) {
-            console.error('PayPal subscription error:', err);
-            alert('Subscription failed. Please try again.');
-          }
-        }).render('#paypal-button-container-subscribe');
-      }
-    }
-
-    function renderLifetimeButton(email) {
-      if (!lifeContainer.hasChildNodes()) {
-        paypal.Buttons({
-          style: { shape: 'rect', color: 'gold', layout: 'vertical', label: 'buynow' },
-          createOrder(data, actions) {
-            return actions.order.create({
-              purchase_units: [{
-                reference_id: 'J9WTV3VYN8X5Y', // Hosted Button ID
-                description: 'CardLocker Lifetime License',
-                amount: { value: '20.00' }
-              }]
-            });
-          },
-          onApprove(data, actions) {
-            // Show “Thank You” modal with placeholder
-            showThankYouModal(email, 'Generating license…');
-
-            // Poll every 2 seconds to check if Firestore has the license
-            let attempts = 0;
-            const maxAttempts = 15; // 15 × 2s = 30 seconds
-            const intervalId = setInterval(async () => {
-              attempts++;
-              try {
-                const resp = await fetch(`https://cardlocker.net/api/check-license?email=${encodeURIComponent(email)}`);
-                if (!resp.ok) throw new Error('Server error ' + resp.status);
-                const { found, licenseKey, signedUrl } = await resp.json();
-
-                if (found) {
-                  clearInterval(intervalId);
-                  // Update modal with actual license key
-                  document.getElementById('customer-license').textContent = licenseKey;
-                  // Redirect to download
-                  window.location.href = signedUrl;
-                } else if (attempts >= maxAttempts) {
-                  clearInterval(intervalId);
-                  alert('License issuance is taking longer than expected. Please contact support.');
-                }
-              } catch (err) {
-                console.error('Error checking license:', err);
-                clearInterval(intervalId);
-                alert('Could not verify license. Please contact support.');
-              }
-            }, 2000);
-          },
-          onError(err) {
-            console.error('PayPal one-time purchase error:', err);
-            alert('Purchase failed. Please try again.');
-          }
-        }).render('#paypal-container-8D52BLYAL3DF2');
-      }
-    }
-
-    // Lifetime plan email input validation
-    const emailInputLife = document.getElementById('email-lifetime');
-    if (emailInputLife) {
-      emailInputLife.addEventListener('input', () => {
-        if (isValidEmail(emailInputLife.value.trim())) {
-          renderLifetimeButton(emailInputLife.value.trim());
-        }
-      });
+// Helper to get subscription details including subscriber email
+async function getSubscriptionDetails(subscriptionId, accessToken) {
+  const response = await fetch(`${process.env.NODE_ENV === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'}/v1/billing/subscriptions/${subscriptionId}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`
     }
   });
-</script>
-</body>
+
+  if (!response.ok) {
+    throw new Error(`Failed to get subscription details: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+// 3) Main webhook handler
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).send('Method not allowed');
+  }
+
+  // Get raw body for verification (critical for PayPal verification)
+  let rawBody;
+  let webhookEvent;
+  
+  try {
+    // If req.body is already parsed, we need to get the raw body differently
+    if (req.body && typeof req.body === 'object') {
+      // Body is already parsed by Vercel - convert back to string
+      rawBody = JSON.stringify(req.body);
+      webhookEvent = req.body;
+    } else {
+      // Get raw body
+      rawBody = await getRawBody(req);
+      webhookEvent = JSON.parse(rawBody);
+    }
+  } catch (err) {
+    console.error('❌ Error parsing webhook body:', err);
+    return res.status(400).json({ error: 'Invalid JSON body' });
+  }
+
+  // 3a) Gather PayPal headers
+  const transmissionId = req.headers['paypal-transmission-id'];
+  const transmissionTime = req.headers['paypal-transmission-time'];
+  const certUrl = req.headers['paypal-cert-url'];
+  const authAlgo = req.headers['paypal-auth-algo'];
+  const actualSignature = req.headers['paypal-transmission-sig'];
+  const webhookId = process.env.PAYPAL_WEBHOOK_ID;
+
+  // Debug: Log all headers to identify what's missing
+  console.log('📋 Webhook Headers Debug:');
+  console.log('transmissionId:', transmissionId ? 'PRESENT' : 'MISSING');
+  console.log('transmissionTime:', transmissionTime ? 'PRESENT' : 'MISSING');
+  console.log('certUrl:', certUrl ? 'PRESENT' : 'MISSING');
+  console.log('authAlgo:', authAlgo ? 'PRESENT' : 'MISSING');
+  console.log('actualSignature:', actualSignature ? 'PRESENT' : 'MISSING');
+  console.log('webhookId:', webhookId ? 'PRESENT' : 'MISSING');
+
+  // 3b) Verify all required headers are present
+  if (!transmissionId || !transmissionTime || !certUrl || !authAlgo || !actualSignature || !webhookId) {
+    console.error('❌ Missing required PayPal webhook headers');
+    return res.status(400).json({ 
+      error: 'Missing required PayPal webhook headers',
+      missing: {
+        transmissionId: !transmissionId,
+        transmissionTime: !transmissionTime,
+        certUrl: !certUrl,
+        authAlgo: !authAlgo,
+        actualSignature: !actualSignature,
+        webhookId: !webhookId
+      }
+    });
+  }
+
+  // 3c) Build verification request - use RAW BODY as webhook_event
+  const verifyRequest = {
+    auth_algo: authAlgo,
+    cert_url: certUrl,
+    transmission_id: transmissionId,
+    transmission_sig: actualSignature,
+    transmission_time: transmissionTime,
+    webhook_id: webhookId,
+    webhook_event: JSON.parse(rawBody) // Use parsed version of raw body
+  };
+
+  // 3d) Perform signature verification using direct API call
+  try {
+    // Get access token for verification
+    const accessToken = await getPayPalAccessToken();
+
+    // Verify webhook signature
+    const verifyResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'}/v1/notifications/verify-webhook-signature`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify(verifyRequest)
+    });
+
+    if (!verifyResponse.ok) {
+      const errorText = await verifyResponse.text();
+      throw new Error(`Verification failed: ${verifyResponse.status} - ${errorText}`);
+    }
+
+    const verifyData = await verifyResponse.json();
+    const verificationStatus = verifyData.verification_status;
+    console.log('🔍 PayPal Webhook verification status:', verificationStatus);
+
+    if (verificationStatus !== 'SUCCESS') {
+      console.error('❌ Invalid PayPal webhook signature');
+      console.error('Verification response:', verifyData);
+      return res.status(400).json({ error: 'Webhook signature verification failed' });
+    }
+  } catch (verifyErr) {
+    console.error('❌ Error verifying PayPal webhook signature:', verifyErr);
+    return res.status(500).json({ error: 'Error verifying webhook signature', details: verifyErr.message });
+  }
+
+  // 4) Handle only the events we care about:
+  const eventType = webhookEvent.event_type;
+  const resource = webhookEvent.resource || {};
+  console.log('📬 Received PayPal webhook event:', eventType);
+
+  try {
+    // 4a) One-time payment completed
+    if (eventType === 'PAYMENT.CAPTURE.COMPLETED') {
+      // Debug: Log the entire resource to see structure
+      console.log('🔍 PAYMENT.CAPTURE.COMPLETED resource structure:', JSON.stringify(resource, null, 2));
+      
+      // Try multiple possible paths for email
+      const payerEmail = 
+        resource.payer?.email_address ||
+        resource.payer?.payer_info?.email ||
+        resource.billing_info?.email_address;
+      
+      const purchaseType = 'one-time';
+      const paypalID = resource.id;
+      
+      if (!payerEmail) {
+        console.error('❌ No payer email found in PAYMENT.CAPTURE.COMPLETED webhook');
+        console.error('Available paths:', {
+          'resource.payer': !!resource.payer,
+          'resource.payer.email_address': !!resource.payer?.email_address,
+          'resource.payer.payer_info': !!resource.payer?.payer_info,
+          'resource.billing_info': !!resource.billing_info
+        });
+        return res.status(400).json({ error: 'Missing payer email in webhook resource' });
+      }
+      
+      await createLicenseAndRespond(payerEmail, purchaseType, paypalID, res);
+      return;
+    }
+
+    // 4b) Subscription activated
+    if (eventType === 'BILLING.SUBSCRIPTION.ACTIVATED') {
+      // Debug: Log the entire resource to see structure
+      console.log('🔍 BILLING.SUBSCRIPTION.ACTIVATED resource structure:', JSON.stringify(resource, null, 2));
+      
+      const subscriptionId = resource.id;
+      const purchaseType = 'subscription';
+      
+      if (!subscriptionId) {
+        console.error('❌ No subscription ID found in BILLING.SUBSCRIPTION.ACTIVATED webhook');
+        return res.status(400).json({ error: 'Missing subscription ID in webhook resource' });
+      }
+      
+      try {
+        // Get access token and fetch full subscription details
+        const accessToken = await getPayPalAccessToken();
+        const subscriptionDetails = await getSubscriptionDetails(subscriptionId, accessToken);
+        
+        console.log('🔍 Full subscription details:', JSON.stringify(subscriptionDetails, null, 2));
+        
+        // Try to extract email from full subscription details
+        const payerEmail = 
+          subscriptionDetails.subscriber?.email_address ||
+          subscriptionDetails.subscriber?.payer_info?.email ||
+          subscriptionDetails.application_context?.customer?.email_address ||
+          subscriptionDetails.payer?.email_address;
+        
+        if (!payerEmail) {
+          console.error('❌ No subscriber email found in full subscription details');
+          console.error('Available paths in full details:', {
+            'subscriber': !!subscriptionDetails.subscriber,
+            'subscriber.email_address': !!subscriptionDetails.subscriber?.email_address,
+            'subscriber.payer_info': !!subscriptionDetails.subscriber?.payer_info,
+            'application_context': !!subscriptionDetails.application_context,
+            'payer': !!subscriptionDetails.payer
+          });
+          
+          // Fallback: Store with payer_id and manual resolution needed
+          const payerId = resource.subscriber?.payer_id;
+          if (payerId) {
+            console.warn('⚠️ Storing subscription with payer_id for manual resolution:', payerId);
+            await createLicenseWithPayerId(payerId, purchaseType, subscriptionId, res);
+            return;
+          } else {
+            return res.status(400).json({ error: 'Unable to identify subscriber - no email or payer_id found' });
+          }
+        }
+        
+        await createLicenseAndRespond(payerEmail, purchaseType, subscriptionId, res);
+        return;
+        
+      } catch (apiErr) {
+        console.error('❌ Error fetching subscription details:', apiErr);
+        
+        // Fallback: Store with payer_id for manual resolution
+        const payerId = resource.subscriber?.payer_id;
+        if (payerId) {
+          console.warn('⚠️ API call failed, storing subscription with payer_id for manual resolution:', payerId);
+          await createLicenseWithPayerId(payerId, purchaseType, subscriptionId, res);
+          return;
+        } else {
+          return res.status(500).json({ error: 'Failed to get subscription details and no payer_id available' });
+        }
+      }
+    }
+
+    // 4c) Other events: ignore
+    console.log('ℹ️ Unhandled event type:', eventType);
+    return res.status(200).send('Event ignored');
+  } catch (err) {
+    console.error('❌ Error in webhook handler:', err);
+    return res.status(500).json({ error: 'Internal error in webhook handler', details: err.message });
+  }
+}
+
+// 5) Helper: writes Firestore + returns signed URL JSON
+async function createLicenseAndRespond(email, purchaseType, paypalID, res) {
+  try {
+    // 5a) Check existing license count
+    const snapshot = await db.collection('licenses').where('email', '==', email).get();
+    if (snapshot.size >= 5) {
+      console.warn(`⚠️ License limit reached for ${email}`);
+      return res.status(403).json({ error: 'Maximum of 5 licenses per email reached.' });
+    }
+
+    // 5b) Generate a license key
+    function generateLicenseKey() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let key = '';
+      for (let i = 0; i < 20; i++) {
+        if (i > 0 && i % 5 === 0) key += '-';
+        key += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return key;
+    }
+    const licenseKey = generateLicenseKey();
+    console.log('🔑 Generated licenseKey:', licenseKey);
+
+    // 5c) Write new license document
+    const newDoc = await db.collection('licenses').add({
+      email: email,
+      licenseKey: licenseKey,
+      purchaseType: purchaseType,
+      paypalID: paypalID,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    console.log('✅ Firestore write succeeded, doc ID:', newDoc.id);
+
+    // 5d) Generate a signed URL for the DMG
+    const fullBlobUrl =
+      'https://qinhuscfvbuurprs.public.blob.vercel-storage.com/cardlocker/' +
+      'CardLocker-qNcAFlKgf0ku0HXcgI0DXm3utFmtoZ.dmg';
+    console.log('🔗 Generating signed URL for:', fullBlobUrl);
+
+    const signedUrl = await getDownloadUrl(fullBlobUrl, {
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+      expiresIn: 60 * 5, // 5 minutes
+    });
+    console.log('🔒 Signed URL generated:', signedUrl);
+
+    // 5e) Return JSON { licenseKey, signedUrl }
+    return res.status(200).json({ licenseKey, signedUrl });
+  } catch (error) {
+    console.error('❌ Error in createLicenseAndRespond:', error);
+    throw error;
+  }
+}
+
+// 6) Fallback helper: stores license with payer_id for manual resolution
+async function createLicenseWithPayerId(payerId, purchaseType, paypalID, res) {
+  try {
+    // Generate a license key
+    function generateLicenseKey() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let key = '';
+      for (let i = 0; i < 20; i++) {
+        if (i > 0 && i % 5 === 0) key += '-';
+        key += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return key;
+    }
+    const licenseKey = generateLicenseKey();
+    console.log('🔑 Generated licenseKey for payer_id:', licenseKey);
+
+    // Write new license document with payer_id instead of email
+    const newDoc = await db.collection('licenses').add({
+      payerId: payerId, // Store payer_id instead of email
+      licenseKey: licenseKey,
+      purchaseType: purchaseType,
+      paypalID: paypalID,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      status: 'pending_email_resolution', // Flag for manual resolution
+    });
+    console.log('✅ Firestore write succeeded with payer_id, doc ID:', newDoc.id);
+
+    // Generate a signed URL for the DMG
+    const fullBlobUrl =
+      'https://qinhuscfvbuurprs.public.blob.vercel-storage.com/cardlocker/' +
+      'CardLocker-qNcAFlKgf0ku0HXcgI0DXm3utFmtoZ.dmg';
+    console.log('🔗 Generating signed URL for:', fullBlobUrl);
+
+    const signedUrl = await getDownloadUrl(fullBlobUrl, {
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+      expiresIn: 60 * 5, // 5 minutes
+    });
+    console.log('🔒 Signed URL generated:', signedUrl);
+
+    // Return JSON { licenseKey, signedUrl } - same as normal flow
+    return res.status(200).json({ licenseKey, signedUrl });
+  } catch (error) {
+    console.error('❌ Error in createLicenseWithPayerId:', error);
+    throw error;
+  }
+}
