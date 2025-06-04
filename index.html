@@ -570,7 +570,7 @@
     // Ensure PayPal SDK is loaded before rendering
     function renderSubscriptionButton(email) {
       if (!subContainer.hasChildNodes()) {
-        paypal.Buttons({
+        paypalVault.Buttons({
           style: { shape: 'rect', color: 'blue', layout: 'vertical', label: 'subscribe' },
           createSubscription(data, actions) {
             return actions.subscription.create({
@@ -631,7 +631,7 @@
 
     function renderLifetimeButton(email) {
       if (!lifeContainer.hasChildNodes()) {
-        paypal.Buttons({
+        paypalBuy.Buttons({
           style: { shape: 'rect', color: 'gold', layout: 'vertical', label: 'buynow' },
           createOrder(data, actions) {
             return actions.order.create({
