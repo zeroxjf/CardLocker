@@ -17,6 +17,7 @@ const db = admin.firestore();
 
 export default async function handler(req, res) {
   console.log('purchase handler invoked, body:', req.body);
+  console.log('Request method:', req.method);
   // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -27,9 +28,11 @@ export default async function handler(req, res) {
     // 2) Extract request fields
     //
     const { email } = req.body;
+    console.log('Extracted email:', email);
     if (!email || typeof email !== 'string') {
       return res.status(400).json({ error: 'Missing or invalid email' });
     }
+    console.log('Email validation passed');
 
     // (Optional) You could also pass other fields: purchaseType, payPalID, etc.
 
@@ -40,6 +43,7 @@ export default async function handler(req, res) {
       .collection('licenses')
       .where('email', '==', email)
       .get();
+    console.log('Existing license count:', existing.size);
 
     if (existing.size >= 5) {
       return res
@@ -60,6 +64,7 @@ export default async function handler(req, res) {
       return key;
     }
     const licenseKey = generateLicenseKey();
+    console.log('Generated licenseKey:', licenseKey);
 
     //
     // 5) Write to Firestore
@@ -71,6 +76,7 @@ export default async function handler(req, res) {
       paypalID: 'SERVER-TEST-' + Date.now(),
       timestamp: admin.firestore.FieldValue.serverTimestamp()
     });
+    console.log('Firestore write succeeded, doc ID:', newDoc.id);
 
     // If we reach here, Firestore write succeeded.
 
@@ -83,10 +89,13 @@ export default async function handler(req, res) {
       'https://qinhuscfvbuurprs.public.blob.vercel-storage.com/cardlocker/' +
       'CardLocker-qNcAFlKgf0ku0HXcgI0DXm3utFmtoZ.dmg';
 
+    console.log('Generating signed URL for:', fullBlobUrl);
+
     const signedUrl = await getDownloadUrl(fullBlobUrl, {
       token: process.env.BLOB_READ_WRITE_TOKEN,
       expiresIn: 60 * 5 // 5 minutes
     });
+    console.log('Signed URL generated:', signedUrl);
 
     //
     // 7) Return both the newly created licenseKey (and/or doc ID) plus the signed URL
