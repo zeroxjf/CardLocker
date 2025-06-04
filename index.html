@@ -564,7 +564,18 @@
                   paypalID: data.subscriptionID,
                   timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 })
-                .then(() => showThankYouModal(email, licenseKey))
+                .then(() => {
+                  showThankYouModal(email, licenseKey);
+                  // After showing the thank you modal, fetch a signed URL and update the download link
+                  fetch(`/api/get-signed-url?file=CardLocker-qNcAFlKgf0ku0HXcgI0DXm3utFmtoZ.dmg`)
+                    .then(res => res.json())
+                    .then(data => {
+                      const downloadLink = document.getElementById('download-link');
+                      downloadLink.href = data.signedUrl;
+                      downloadLink.textContent = 'Download CardLocker';
+                    })
+                    .catch(err => console.error('Error fetching signed URL:', err));
+                })
                 .catch(err => {
                   console.error('Firestore error:', err);
                   alert('Could not store license. Please try again.');
@@ -606,7 +617,18 @@
                     paypalID: data.orderID,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                   })
-                  .then(() => showThankYouModal(email, licenseKey))
+                  .then(() => {
+                    showThankYouModal(email, licenseKey);
+                    // After showing the thank you modal, fetch a signed URL and update the download link
+                    fetch(`/api/get-signed-url?file=CardLocker-qNcAFlKgf0ku0HXcgI0DXm3utFmtoZ.dmg`)
+                      .then(res => res.json())
+                      .then(data => {
+                        const downloadLink = document.getElementById('download-link');
+                        downloadLink.href = data.signedUrl;
+                        downloadLink.textContent = 'Download CardLocker';
+                      })
+                      .catch(err => console.error('Error fetching signed URL:', err));
+                  })
                   .catch(err => {
                     console.error('Firestore error:', err);
                     alert('Could not store license. Please try again.');
