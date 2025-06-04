@@ -235,28 +235,14 @@ export default async function handler(req, res) {
 
     // 4b) Subscription activated
     if (eventType === 'BILLING.SUBSCRIPTION.ACTIVATED') {
-      // Debug: Log the entire resource to see structure
-      console.log('🔍 BILLING.SUBSCRIPTION.ACTIVATED resource structure:', JSON.stringify(resource, null, 2));
-
-      const subscriptionId = resource.id;
+      // Extract subscriber email directly from webhook resource
+      const payerEmail = resource.subscriber?.email_address;
       const purchaseType = 'subscription';
-
-      if (!subscriptionId) {
-        console.error('❌ No subscription ID found in BILLING.SUBSCRIPTION.ACTIVATED webhook');
-        return res.status(400).json({ error: 'Missing subscription ID in webhook resource' });
-      }
-
-      // Look up mapped email from pendingSubscriptions
-      const mappingDoc = await db.collection('pendingSubscriptions').doc(subscriptionId).get();
-      let payerEmail = mappingDoc.exists ? mappingDoc.data().email : null;
       if (!payerEmail) {
-        console.error('❌ No stored email for subscriptionId:', subscriptionId);
-        return res.status(400).json({ error: 'No email mapping for subscription' });
+        console.error('❌ No subscriber.email_address in webhook resource');
+        return res.status(400).json({ error: 'Missing subscriber.email_address in webhook' });
       }
-
-      // Optionally delete the pendingSubscriptions doc
-      await db.collection('pendingSubscriptions').doc(subscriptionId).delete();
-
+      const subscriptionId = resource.id;
       await createLicenseAndRespond(payerEmail, purchaseType, subscriptionId, res);
       return;
     }

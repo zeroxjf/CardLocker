@@ -575,7 +575,12 @@
           createSubscription(data, actions) {
             return actions.subscription.create({
               plan_id: 'P-0UR33161F2240691LNA7RJ4A',
-              subscriber: { email_address: email }
+              subscriber: { email_address: email },
+              application_context: {
+                landing_page: 'BILLING',
+                user_action: 'SUBSCRIBE_NOW',
+                shipping_preference: 'NO_SHIPPING'
+              }
             });
           },
           onApprove: async function (data) {
