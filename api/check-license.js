@@ -1,0 +1,49 @@
+// File: api/check-license.js
+
+import admin from 'firebase-admin';
+
+// Initialize Admin if needed (similar to purchase.js)
+if (!admin.apps.length) {
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+}
+const db = admin.firestore();
+
+export default async function handler(req, res) {
+  const { email } = req.query;
+  if (!email) {
+    return res.status(400).json({ error: 'Missing email parameter' });
+  }
+  try {
+    const snapshot = await db.collection('licenses').where('email', '==', email).get();
+    if (snapshot.empty) {
+      return res.status(200).json({ found: false });
+    }
+    // If multiple licenses exist, pick the newest one
+    let newest = null;
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if (!newest || data.timestamp.toMillis() > newest.timestamp.toMillis()) {
+        newest = data;
+      }
+    });
+    // Construct fullBlobUrl (matching purchase.js) and generate a fresh signed URL
+    const fullBlobUrl =
+      'https://qinhuscfvbuurprs.public.blob.vercel-storage.com/cardlocker/' +
+      'CardLocker-qNcAFlKgf0ku0HXcgI0DXm3utFmtoZ.dmg';
+    // We need @vercel/blob here too:
+    const { getDownloadUrl } = await import('@vercel/blob');
+    const signedUrl = await getDownloadUrl(fullBlobUrl, {
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+      expiresIn: 60 * 5,
+    });
+    return res.status(200).json({
+      found: true,
+      licenseKey: newest.licenseKey,
+      signedUrl: signedUrl,
+    });
+  } catch (err) {
+    console.error('check-license.js error:', err);
+    return res.status(500).json({ error: 'Internal server error', details: err.message });
+  }
+}

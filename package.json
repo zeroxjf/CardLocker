@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/zeroxjf/CardLocker#readme",
   "dependencies": {
+    "@paypal/checkout-server-sdk": "^1.0.3",
     "@vercel/blob": "^1.1.1",
     "firebase-admin": "^13.4.0"
   }
