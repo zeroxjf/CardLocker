@@ -566,7 +566,10 @@
         paypal.Buttons({
           style: { shape: 'rect', color: 'blue', layout: 'vertical', label: 'subscribe' },
           createSubscription(data, actions) {
-            return actions.subscription.create({ plan_id: 'P-0UR33161F2240691LNA7RJ4A' });
+            return actions.subscription.create({
+              plan_id: 'P-0UR33161F2240691LNA7RJ4A',
+              subscriber: { email_address: email }
+            });
           },
           onApprove(data) {
             // Show “Thank You” modal with placeholder
