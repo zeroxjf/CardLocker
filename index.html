@@ -329,8 +329,16 @@
       appId: "1:729816549959:web:4e34482d004dcf3a6cff62"
     };
     // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
+    firebas`e.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+
+    // Generate a simple random license key
+    function generateLicenseKey() {
+      // Example: return a random 16-character hexadecimal string
+      return 'xxxx-xxxx-xxxx-xxxx'.replace(/x/g, () =>
+        Math.floor(Math.random() * 16).toString(16)
+      ).toUpperCase();
+    }
   </script>
   <div class="container">
     <!-- ===== Navbar ===== -->
