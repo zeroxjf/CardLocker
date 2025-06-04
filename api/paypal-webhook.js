@@ -94,6 +94,21 @@ async function getSubscriptionDetails(subscriptionId, accessToken) {
   return await response.json();
 }
 
+// NEW: Helper to check for stored subscription mapping
+async function getEmailFromSubscriptionMapping(subscriptionId) {
+  try {
+    const snapshot = await db.collection('subscription_mappings').doc(subscriptionId).get();
+    if (snapshot.exists) {
+      const data = snapshot.data();
+      console.log('🔍 Found stored email mapping:', data.email);
+      return data.email;
+    }
+  } catch (error) {
+    console.error('❌ Error checking subscription mapping:', error);
+  }
+  return null;
+}
+
 // 3) Main webhook handler
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -233,16 +248,69 @@ export default async function handler(req, res) {
       return;
     }
 
-    // 4b) Subscription activated
+    // 4b) Subscription activated - ENHANCED EMAIL RESOLUTION
     if (eventType === 'BILLING.SUBSCRIPTION.ACTIVATED') {
-      // Extract subscriber email directly from webhook resource
-      const payerEmail = resource.subscriber?.email_address;
-      const purchaseType = 'subscription';
-      if (!payerEmail) {
-        console.error('❌ No subscriber.email_address in webhook resource');
-        return res.status(400).json({ error: 'Missing subscriber.email_address in webhook' });
-      }
       const subscriptionId = resource.id;
+      const purchaseType = 'subscription';
+      let payerEmail = null;
+
+      console.log('🔍 BILLING.SUBSCRIPTION.ACTIVATED resource structure:', JSON.stringify(resource, null, 2));
+
+      // Step 1: Try to get email from webhook resource
+      payerEmail = resource.subscriber?.email_address;
+      if (payerEmail) {
+        console.log('✅ Found email in webhook resource:', payerEmail);
+      }
+
+      // Step 2: If not found, check our stored subscription mapping
+      if (!payerEmail) {
+        console.log('🔍 Email not in webhook, checking stored mapping...');
+        payerEmail = await getEmailFromSubscriptionMapping(subscriptionId);
+        if (payerEmail) {
+          console.log('✅ Found email in stored mapping:', payerEmail);
+        }
+      }
+
+      // Step 3: If still not found, try PayPal API
+      if (!payerEmail) {
+        console.log('🔍 Email not in mapping, fetching from PayPal API...');
+        try {
+          const accessToken = await getPayPalAccessToken();
+          const subscriptionDetails = await getSubscriptionDetails(subscriptionId, accessToken);
+          
+          console.log('🔍 PayPal API subscription details:', JSON.stringify(subscriptionDetails, null, 2));
+          
+          // Try multiple possible paths in the API response
+          payerEmail = 
+            subscriptionDetails.subscriber?.email_address ||
+            subscriptionDetails.subscriber?.payer_id ||
+            subscriptionDetails.billing_info?.email_address;
+          
+          if (payerEmail) {
+            console.log('✅ Found email in PayPal API response:', payerEmail);
+          }
+        } catch (fetchErr) {
+          console.error('❌ Error fetching subscription details from PayPal API:', fetchErr);
+        }
+      }
+
+      // Step 4: Final check - if we still don't have email, log everything for debugging
+      if (!payerEmail) {
+        console.error('❌ COMPLETE EMAIL RESOLUTION FAILURE');
+        console.error('Subscription ID:', subscriptionId);
+        console.error('Webhook resource subscriber paths:');
+        console.error('  - resource.subscriber:', !!resource.subscriber);
+        console.error('  - resource.subscriber.email_address:', resource.subscriber?.email_address);
+        console.error('  - resource.billing_info:', !!resource.billing_info);
+        console.error('  - resource.payer:', !!resource.payer);
+        
+        // As a last resort, create a license with subscription ID for manual resolution
+        console.log('🚨 Creating license with subscription ID for manual resolution');
+        await createLicenseWithSubscriptionId(subscriptionId, purchaseType, subscriptionId, res);
+        return;
+      }
+
+      // Success! Create the license
       await createLicenseAndRespond(payerEmail, purchaseType, subscriptionId, res);
       return;
     }
@@ -290,9 +358,7 @@ async function createLicenseAndRespond(email, purchaseType, paypalID, res) {
     console.log('✅ Firestore write succeeded, doc ID:', newDoc.id);
 
     // 5d) Generate a signed URL for the DMG
-    const fullBlobUrl =
-      'https://qinhuscfvbuurprs.public.blob.vercel-storage.com/cardlocker/' +
-      'CardLocker-qNcAFlKgf0ku0HXcgI0DXm3utFmtoZ.dmg';
+    const fullBlobUrl = process.env.BLOB_FILE_URL;
     console.log('🔗 Generating signed URL for:', fullBlobUrl);
 
     const signedUrl = await getDownloadUrl(fullBlobUrl, {
@@ -309,7 +375,57 @@ async function createLicenseAndRespond(email, purchaseType, paypalID, res) {
   }
 }
 
-// 6) Fallback helper: stores license with payer_id for manual resolution
+// 6) NEW: Fallback helper for when we can't get email but have subscription ID
+async function createLicenseWithSubscriptionId(subscriptionId, purchaseType, paypalID, res) {
+  try {
+    // Generate a license key
+    function generateLicenseKey() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let key = '';
+      for (let i = 0; i < 20; i++) {
+        if (i > 0 && i % 5 === 0) key += '-';
+        key += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return key;
+    }
+    const licenseKey = generateLicenseKey();
+    console.log('🔑 Generated licenseKey for subscription ID:', licenseKey);
+
+    // Write new license document with subscription ID for manual resolution
+    const newDoc = await db.collection('licenses').add({
+      subscriptionId: subscriptionId, // Store subscription ID for manual lookup
+      licenseKey: licenseKey,
+      purchaseType: purchaseType,
+      paypalID: paypalID,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      status: 'pending_email_resolution', // Flag for manual resolution
+      notes: 'Email could not be resolved from PayPal webhook or API'
+    });
+    console.log('✅ Firestore write succeeded with subscription ID, doc ID:', newDoc.id);
+
+    // Generate a signed URL for the DMG
+    const fullBlobUrl = process.env.BLOB_FILE_URL;
+    console.log('🔗 Generating signed URL for:', fullBlobUrl);
+
+    const signedUrl = await getDownloadUrl(fullBlobUrl, {
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+      expiresIn: 60 * 5, // 5 minutes
+    });
+    console.log('🔒 Signed URL generated:', signedUrl);
+
+    // Return JSON { licenseKey, signedUrl } - same as normal flow
+    return res.status(200).json({ 
+      licenseKey, 
+      signedUrl,
+      note: 'License created with subscription ID - email resolution pending'
+    });
+  } catch (error) {
+    console.error('❌ Error in createLicenseWithSubscriptionId:', error);
+    throw error;
+  }
+}
+
+// 7) ORIGINAL: Fallback helper: stores license with payer_id for manual resolution
 async function createLicenseWithPayerId(payerId, purchaseType, paypalID, res) {
   try {
     // Generate a license key
@@ -337,9 +453,7 @@ async function createLicenseWithPayerId(payerId, purchaseType, paypalID, res) {
     console.log('✅ Firestore write succeeded with payer_id, doc ID:', newDoc.id);
 
     // Generate a signed URL for the DMG
-    const fullBlobUrl =
-      'https://qinhuscfvbuurprs.public.blob.vercel-storage.com/cardlocker/' +
-      'CardLocker-qNcAFlKgf0ku0HXcgI0DXm3utFmtoZ.dmg';
+    const fullBlobUrl = process.env.BLOB_FILE_URL;
     console.log('🔗 Generating signed URL for:', fullBlobUrl);
 
     const signedUrl = await getDownloadUrl(fullBlobUrl, {
