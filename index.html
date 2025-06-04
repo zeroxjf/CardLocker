@@ -351,9 +351,10 @@
       background-color: #005bb5;
     }
   </style>
+<!-- Single PayPal SDK without vault to enable guest checkout for both -->
 <script
-  src="https://www.paypal.com/sdk/js?client-id=ARmFJUNL-2grFv62pdVgTgbaulkPP-lj2_3yEpzjdtz6RWt-h7ISTHqKTolA715eeR-74mIyu-MNE6Mp&vault=false"
-  data-namespace="paypalBuy"
+  src="https://www.paypal.com/sdk/js?client-id=ARmFJUNL-2grFv62pdVgTgbaulkPP-lj2_3yEpzjdtz6RWt-h7ISTHqKTolA715eeR-74mIyu-MNE6Mp&vault=false&disable-funding=credit"
+  data-namespace="paypal"
 ></script>
 </head>
 <body>
@@ -402,9 +403,9 @@
         CardLocker for macOS
       </h1>
       <p class="intro">
-        CardLocker is the card manager you’ve always wished Apple would build. 
-        No more hunting through Safari’s Autofill or digging out your physical wallet. 
-        Inspired by the clean design and functionality of Apple’s Passwords app, CardLocker 
+        CardLocker is the card manager you've always wished Apple would build. 
+        No more hunting through Safari's Autofill or digging out your physical wallet. 
+        Inspired by the clean design and functionality of Apple's Passwords app, CardLocker 
         brings that same polished, native feel to your credit and debit cards.
       </p>
     </header>
@@ -444,10 +445,10 @@
           <h2>Key Features</h2>
           <ul>
             <li><strong>Native macOS Experience:</strong> Tucked in your menu bar or standalone window—with familiar controls and smooth animations.</li>
-            <li><strong>Simple Card Entry:</strong> Tap “+” to enter nickname, number, expiry, CVV—then save in a native-style form.</li>
+            <li><strong>Simple Card Entry:</strong> Tap "+" to enter nickname, number, expiry, CVV—then save in a native-style form.</li>
             <li><strong>Secure Storage:</strong> Card numbers stay locked in your Keychain; only non-sensitive metadata travels over iCloud.</li>
             <li><strong>Quick Access:</strong> Click to edit inline or enter Edit mode for bulk delete/recovery.</li>
-            <li><strong>Recovery Options:</strong> Deleted cards live in “Recently Deleted” for 30 days.</li>
+            <li><strong>Recovery Options:</strong> Deleted cards live in "Recently Deleted" for 30 days.</li>
             <li><strong>Efficient Search and Organization:</strong> Lightning-fast search, filters (Credit, Debit, Rewards, Business, Deleted), and smart sorting.</li>
             <li><strong>Customization:</strong> Dark Mode support and customizable category labels to fit right into macOS.</li>
           </ul>
@@ -455,9 +456,9 @@
 
         <div class="card" id="how-it-works">
           <h2>How It Works</h2>
-          <p>CardLocker never transmits your raw card data anywhere. Here’s how it keeps your information secure:</p>
+          <p>CardLocker never transmits your raw card data anywhere. Here's how it keeps your information secure:</p>
           <ul>
-            <li><strong>Local Encryption:</strong> All card numbers are encrypted and stored in your macOS Keychain. Only your device’s secure enclave can decrypt the data.</li>
+            <li><strong>Local Encryption:</strong> All card numbers are encrypted and stored in your macOS Keychain. Only your device's secure enclave can decrypt the data.</li>
             <li><strong>No Server Storage:</strong> We never upload your sensitive card details to any server. Only non-sensitive metadata (like nicknames and categories) can be optionally synced via iCloud.</li>
             <li><strong>Open Source Transparency:</strong> The full source code is available on GitHub so you can audit every line: 
               <a href="https://github.com/zeroxjf/CardLocker" target="_blank" rel="noopener">github.com/zeroxjf/CardLocker</a>.
@@ -486,7 +487,7 @@
 
 
     <p class="privacy-disclaimer">
-      CardLocker is designed with your privacy in mind. The developer does not collect any data from this app. All sensitive information is securely stored in your device’s Keychain.
+      CardLocker is designed with your privacy in mind. The developer does not collect any data from this app. All sensitive information is securely stored in your device's Keychain.
     </p>
 
     <!-- ===== Footer ===== -->
@@ -553,7 +554,11 @@
         // Listen for input changes to validate email
         input.addEventListener('input', () => {
           if (isValidEmail(input.value.trim())) {
-            renderSubscriptionButton(input.value.trim());
+            if (btn.dataset.plan === 'subscribe') {
+              renderSubscriptionButton(input.value.trim());
+            } else if (btn.dataset.plan === 'lifetime') {
+              renderLifetimeButton(input.value.trim());
+            }
           }
         });
       });
@@ -563,18 +568,30 @@
     const subContainer = document.getElementById('paypal-button-container-subscribe');
     const lifeContainer = document.getElementById('paypal-container-8D52BLYAL3DF2');
 
-    // Ensure PayPal SDK is loaded before rendering
+    // Render subscription button with guest checkout enabled
     function renderSubscriptionButton(email) {
       if (!subContainer.hasChildNodes()) {
-        paypalBuy.Buttons({
-          style: { shape: 'rect', color: 'blue', layout: 'vertical', label: 'subscribe' },
+        paypal.Buttons({
+          style: { 
+            shape: 'rect', 
+            color: 'blue', 
+            layout: 'vertical', 
+            label: 'subscribe' 
+          },
           createSubscription(data, actions) {
             return actions.subscription.create({
               plan_id: 'P-0UR33161F2240691LNA7RJ4A',
-              subscriber: { email_address: email },
+              subscriber: { 
+                email_address: email 
+              },
               application_context: {
+                brand_name: 'CardLocker',
                 landing_page: 'BILLING',
                 user_action: 'SUBSCRIBE_NOW',
+                payment_method: {
+                  payee_preferred: 'IMMEDIATE_PAYMENT_REQUIRED',
+                  payer_selected: 'PAYPAL'
+                },
                 shipping_preference: 'NO_SHIPPING'
               }
             });
@@ -592,7 +609,7 @@
               console.error('❌ Error storing subscription mapping:', err);
             }
 
-            // Now show the “Thank You” modal and start polling
+            // Now show the "Thank You" modal and start polling
             showThankYouModal(email, 'Generating license…');
 
             // Poll every 2 seconds to check if Firestore has the license
@@ -630,10 +647,16 @@
       }
     }
 
+    // Render lifetime button with guest checkout enabled
     function renderLifetimeButton(email) {
       if (!lifeContainer.hasChildNodes()) {
-        paypalBuy.Buttons({
-          style: { shape: 'rect', color: 'gold', layout: 'vertical', label: 'buynow' },
+        paypal.Buttons({
+          style: { 
+            shape: 'rect', 
+            color: 'gold', 
+            layout: 'vertical', 
+            label: 'buynow' 
+          },
           createOrder(data, actions) {
             return actions.order.create({
               purchase_units: [{
@@ -644,14 +667,18 @@
                 }
               }],
               application_context: {
+                brand_name: 'CardLocker',
                 landing_page: 'BILLING',
                 user_action: 'PAY_NOW',
+                payment_method: {
+                  payee_preferred: 'IMMEDIATE_PAYMENT_REQUIRED'
+                },
                 shipping_preference: 'NO_SHIPPING'
               }
             });
           },
           onApprove(data, actions) {
-            // Show “Thank You” modal with placeholder
+            // Show "Thank You" modal with placeholder
             showThankYouModal(email, 'Generating license…');
 
             // Poll every 2 seconds to check if Firestore has the license
