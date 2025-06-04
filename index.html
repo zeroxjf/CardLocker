@@ -601,47 +601,29 @@
             });
           },
           onApprove: async function (data) {
-            // First, store subscription → email mapping and wait
+            // Directly create a license for the subscriber without waiting for webhook
             try {
-              await fetch('https://cardlocker.net/api/store-subscription', {
+              const resp = await fetch('https://cardlocker.net/api/create-license', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ subscriptionId: data.subscriptionID, email: email })
+                body: JSON.stringify({
+                  email: email,
+                  purchaseType: 'subscription',
+                  paypalID: data.orderID || data.subscriptionID
+                })
               });
-              console.log('✅ Stored subscription mapping for', data.subscriptionID);
+              if (!resp.ok) throw new Error('Server error ' + resp.status);
+              const { licenseKey, signedUrl } = await resp.json();
+              
+              // Show “Thank You” modal with the actual license key
+              showThankYouModal(email, licenseKey);
+              
+              // Redirect to the download URL
+              window.location.href = signedUrl;
             } catch (err) {
-              console.error('❌ Error storing subscription mapping:', err);
+              console.error('Error creating license directly:', err);
+              alert('Subscription succeeded but license creation failed. Please contact support.');
             }
-
-            // Now show the "Thank You" modal and start polling
-            showThankYouModal(email, 'Generating license…');
-
-            // Poll every 2 seconds to check if Firestore has the license
-            let attempts = 0;
-            const maxAttempts = 15; // 15 × 2s = 30 seconds
-            const intervalId = setInterval(async () => {
-              attempts++;
-              try {
-                const resp = await fetch(`https://cardlocker.net/api/check-license?email=${encodeURIComponent(email)}`);
-                if (!resp.ok) throw new Error('Server error ' + resp.status);
-                const { found, licenseKey, signedUrl } = await resp.json();
-
-                if (found) {
-                  clearInterval(intervalId);
-                  // Update modal with actual license key
-                  document.getElementById('customer-license').textContent = licenseKey;
-                  // Redirect to download
-                  window.location.href = signedUrl;
-                } else if (attempts >= maxAttempts) {
-                  clearInterval(intervalId);
-                  alert('License issuance is taking longer than expected. Please contact support.');
-                }
-              } catch (err) {
-                console.error('Error checking license:', err);
-                clearInterval(intervalId);
-                alert('Could not verify license. Please contact support.');
-              }
-            }, 2000);
           },
           onError(err) {
             console.error('PayPal subscription error:', err);
