@@ -148,26 +148,60 @@ export default async function handler(req, res) {
   try {
     // 4a) One-time payment completed
     if (eventType === 'PAYMENT.CAPTURE.COMPLETED') {
-      const payerEmail = resource.payer?.email_address;
+      // Debug: Log the entire resource to see structure
+      console.log('🔍 PAYMENT.CAPTURE.COMPLETED resource structure:', JSON.stringify(resource, null, 2));
+      
+      // Try multiple possible paths for email
+      const payerEmail = 
+        resource.payer?.email_address ||
+        resource.payer?.payer_info?.email ||
+        resource.billing_info?.email_address;
+      
       const purchaseType = 'one-time';
       const paypalID = resource.id;
+      
       if (!payerEmail) {
-        console.error('❌ No payer email in PAYMENT.CAPTURE.COMPLETED webhook');
+        console.error('❌ No payer email found in PAYMENT.CAPTURE.COMPLETED webhook');
+        console.error('Available paths:', {
+          'resource.payer': !!resource.payer,
+          'resource.payer.email_address': !!resource.payer?.email_address,
+          'resource.payer.payer_info': !!resource.payer?.payer_info,
+          'resource.billing_info': !!resource.billing_info
+        });
         return res.status(400).json({ error: 'Missing payer email in webhook resource' });
       }
+      
       await createLicenseAndRespond(payerEmail, purchaseType, paypalID, res);
       return;
     }
 
     // 4b) Subscription activated
     if (eventType === 'BILLING.SUBSCRIPTION.ACTIVATED') {
-      const payerEmail = resource.subscriber?.email_address;
+      // Debug: Log the entire resource to see structure
+      console.log('🔍 BILLING.SUBSCRIPTION.ACTIVATED resource structure:', JSON.stringify(resource, null, 2));
+      
+      // Try multiple possible paths for email
+      const payerEmail = 
+        resource.subscriber?.email_address ||
+        resource.subscriber?.name?.email_address ||
+        resource.payer?.email_address ||
+        resource.billing_info?.email_address;
+      
       const purchaseType = 'subscription';
       const paypalID = resource.id;
+      
       if (!payerEmail) {
-        console.error('❌ No subscriber email in BILLING.SUBSCRIPTION.ACTIVATED webhook');
+        console.error('❌ No subscriber email found in BILLING.SUBSCRIPTION.ACTIVATED webhook');
+        console.error('Available paths:', {
+          'resource.subscriber': !!resource.subscriber,
+          'resource.subscriber.email_address': !!resource.subscriber?.email_address,
+          'resource.subscriber.name': !!resource.subscriber?.name,
+          'resource.payer': !!resource.payer,
+          'resource.billing_info': !!resource.billing_info
+        });
         return res.status(400).json({ error: 'Missing subscriber email in webhook resource' });
       }
+      
       await createLicenseAndRespond(payerEmail, purchaseType, paypalID, res);
       return;
     }
