@@ -55,10 +55,30 @@ export default async function handler(req, res) {
   const webhookId = process.env.PAYPAL_WEBHOOK_ID;
   const webhookEvent = req.body;
 
+  // Debug: Log all headers to identify what's missing
+  console.log('📋 Webhook Headers Debug:');
+  console.log('transmissionId:', transmissionId ? 'PRESENT' : 'MISSING');
+  console.log('transmissionTime:', transmissionTime ? 'PRESENT' : 'MISSING');
+  console.log('certUrl:', certUrl ? 'PRESENT' : 'MISSING');
+  console.log('authAlgo:', authAlgo ? 'PRESENT' : 'MISSING');
+  console.log('actualSignature:', actualSignature ? 'PRESENT' : 'MISSING');
+  console.log('webhookId:', webhookId ? 'PRESENT' : 'MISSING');
+  console.log('All headers:', Object.keys(req.headers).filter(h => h.startsWith('paypal')));
+
   // 3b) Verify all required headers are present
   if (!transmissionId || !transmissionTime || !certUrl || !authAlgo || !actualSignature || !webhookId) {
     console.error('❌ Missing required PayPal webhook headers');
-    return res.status(400).json({ error: 'Missing required PayPal webhook headers' });
+    return res.status(400).json({ 
+      error: 'Missing required PayPal webhook headers',
+      missing: {
+        transmissionId: !transmissionId,
+        transmissionTime: !transmissionTime,
+        certUrl: !certUrl,
+        authAlgo: !authAlgo,
+        actualSignature: !actualSignature,
+        webhookId: !webhookId
+      }
+    });
   }
 
   // 3c) Build verification request
@@ -72,13 +92,43 @@ export default async function handler(req, res) {
     webhook_event: webhookEvent,
   };
 
-  // 3d) Perform signature verification
+  // 3d) Perform signature verification using direct API call
   try {
-    const request = new checkoutNodeJssdk.notifications.VerifyWebhookSignatureRequest();
-    request.requestBody(verifyRequest);
+    // Get access token for verification
+    const authResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'}/v1/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Language': 'en_US',
+        'Authorization': `Basic ${Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString('base64')}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: 'grant_type=client_credentials'
+    });
 
-    const response = await paypalClient.execute(request);
-    const verificationStatus = response.result.verification_status;
+    if (!authResponse.ok) {
+      throw new Error(`Auth failed: ${authResponse.status}`);
+    }
+
+    const authData = await authResponse.json();
+    const accessToken = authData.access_token;
+
+    // Verify webhook signature
+    const verifyResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'}/v1/notifications/verify-webhook-signature`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify(verifyRequest)
+    });
+
+    if (!verifyResponse.ok) {
+      throw new Error(`Verification failed: ${verifyResponse.status}`);
+    }
+
+    const verifyData = await verifyResponse.json();
+    const verificationStatus = verifyData.verification_status;
     console.log('🔍 PayPal Webhook verification status:', verificationStatus);
 
     if (verificationStatus !== 'SUCCESS') {
