@@ -623,10 +623,17 @@
           createOrder(data, actions) {
             return actions.order.create({
               purchase_units: [{
-                reference_id: 'J9WTV3VYN8X5Y', // Hosted Button ID
                 description: 'CardLocker Lifetime License',
-                amount: { value: '20.00' }
-              }]
+                amount: {
+                  currency_code: 'USD',
+                  value: '20.00'
+                }
+              }],
+              application_context: {
+                landing_page: 'BILLING',
+                user_action: 'PAY_NOW',
+                shipping_preference: 'NO_SHIPPING'
+              }
             });
           },
           onApprove(data, actions) {
