@@ -2,7 +2,7 @@
 
 import { getDownloadUrl } from '@vercel/blob';
 import admin from 'firebase-admin';
-import CheckoutNodeJssdk from '@paypal/checkout-server-sdk';
+import * as CheckoutNodeJssdk from '@paypal/checkout-server-sdk';
 
 // 1) Initialize PayPal environment (Sandbox vs Live)
 let paypalClient;
