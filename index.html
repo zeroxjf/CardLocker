@@ -328,6 +328,34 @@
       </ul>
     </nav>
 
+<<<<<<< HEAD
+  <!-- Email Capture Section: no account creation -->
+  <section style="max-width:400px; margin:1rem auto; text-align:center;">
+    <h2>Enter Your Email</h2>
+    <input 
+      type="email" 
+      id="buyer-email" 
+      placeholder="you@example.com" 
+      style="width:100%; padding:0.5rem; margin-bottom:0.5rem;" 
+    />
+    <button 
+      id="save-email-btn" 
+      style="padding:0.5rem 1rem; background:#1a73e8; color:white; border:none; border-radius:4px; cursor:pointer;"
+    >
+      Save Email
+    </button>
+    <div id="email-error" style="color:red; margin-top:0.5rem;"></div>
+  </section>
+
+  <!-- ========== Main Content ========== -->
+  <main>
+    <!-- Subscription Section -->
+    <section>
+      <h2>Subscribe for Full Access</h2>
+      <p>Enjoy unlimited features with our monthly subscription plan. After payment, you’ll receive a license key via email and can download the latest CardLocker app immediately.</p>
+      <div id="paypal-button-container-subscribe" style="display:none;"></div>
+    </section>
+=======
     <!-- ===== Hero Section ===== -->
     <header id="featured" class="hero">
       <h1 class="title-with-icon">
@@ -341,7 +369,17 @@
         brings that same polished, native feel to your credit and debit cards.
       </p>
     </header>
+>>>>>>> cb338932c2f24177d226e049d124a7db99e72d65
 
+<<<<<<< HEAD
+    <!-- One-Time Purchase Section -->
+    <section>
+      <h2>One-Time Purchase</h2>
+      <p>Prefer a one-time payment? Get lifetime access with a single purchase. You’ll receive a unique license key via email and download instructions right away.</p>
+      <div id="paypal-button-container-onetime" style="display:none;"></div>
+    </section>
+  </main>
+=======
     <!-- ===== Main Content ===== -->
     <main>
       <div class="card-container">
@@ -361,6 +399,9 @@
                   href="https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-0UR33161F2240691LNA7RJ4A"
                   target="_blank"
                 >Subscribe Now</a>
+                <button type="button" class="test-button" data-plan="subscription">
+                  Test Subscription Purchase
+                </button>
               </div>
             </div>
             <div class="plan">
@@ -376,10 +417,14 @@
                   href="https://www.paypal.com/ncp/payment/J9WTV3VYN8X5Y"
                   target="_blank"
                 >Buy Now</a>
+                <button type="button" class="test-button" data-plan="lifetime">
+                  Test Lifetime Purchase
+                </button>
               </div>
             </div>
           </div>
         </div>
+>>>>>>> cb338932c2f24177d226e049d124a7db99e72d65
 
         <!-- Key Features -->
         <div class="card" id="features">
@@ -473,6 +518,36 @@
     });
   });
 </script>
+<script>
+  // TEST BUTTONS: Simulate purchase and write test license to Firestore
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('test-button')) {
+      // Prevent if email invalid
+      const planDiv = e.target.closest('.plan');
+      const input = planDiv.querySelector('input');
+      const email = input.value.trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        alert('Please enter a valid email for testing.');
+        return;
+      }
+      const purchaseType = e.target.dataset.plan;
+      const licenseKey = generateLicenseKey();
+      // Write to Firestore
+      db.collection('licenses').add({
+        email: email,
+        licenseKey: licenseKey,
+        purchaseType: purchaseType,
+        paypalID: 'TEST',
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        showThankYouModal(email, licenseKey);
+      }).catch((err) => {
+        console.error('Firestore test write error:', err);
+        alert('Test purchase failed. Check console.');
+      });
+    }
+  });
+</script>
 <!-- Lifetime PayPal link customization -->
 <script>
   document.addEventListener('DOMContentLoaded', () => {
@@ -507,11 +582,185 @@
           field.style.display = 'none';
         });
 
+<<<<<<< HEAD
+  <!-- Firebase App (required) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <!-- Firebase Firestore -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script>
+    // TODO: Replace with your Firebase project config
+    const firebaseConfig = {
+      apiKey: "YOUR_FIREBASE_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
+
+  <script>
+    let buyerEmail = null;
+    let paypalButtonsRendered = false;
+
+    // Save Email Button Handler
+    document.getElementById('save-email-btn').addEventListener('click', () => {
+      const input = document.getElementById('buyer-email').value.trim();
+      const errorDiv = document.getElementById('email-error');
+      if (!input || !input.includes('@') || !input.includes('.')) {
+        errorDiv.textContent = 'Please enter a valid email address.';
+        return;
+      }
+      buyerEmail = input;
+      errorDiv.textContent = '';
+      localStorage.setItem('buyerEmail', buyerEmail);
+      document.getElementById('paypal-button-container-subscribe').style.display = 'block';
+      document.getElementById('paypal-button-container-onetime').style.display = 'block';
+      if (!paypalButtonsRendered) {
+        renderPayPalButtons();
+        paypalButtonsRendered = true;
+      }
+    });
+
+    // On page load, check for saved email
+    window.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('buyerEmail');
+      if (saved) {
+        buyerEmail = saved;
+        document.getElementById('buyer-email').value = saved;
+        document.getElementById('paypal-button-container-subscribe').style.display = 'block';
+        document.getElementById('paypal-button-container-onetime').style.display = 'block';
+        renderPayPalButtons();
+        paypalButtonsRendered = true;
+      }
+    });
+
+    // Helper to generate a license key
+    function generateLicenseKey() {
+      // Simple random key, e.g. "XXXX-XXXX-XXXX"
+      const segments = [];
+      for (let i = 0; i < 3; i++) {
+        segments.push(Math.random().toString(36).substring(2, 6).toUpperCase());
+      }
+      return segments.join('-');
+    }
+
+    // Function to render PayPal Buttons after email is saved
+    function renderPayPalButtons() {
+      // Subscription Button
+      paypal.Buttons({
+        style: {
+          shape: 'rect',
+          color: 'gold',
+          layout: 'vertical',
+          label: 'subscribe'
+        },
+        createSubscription(data, actions) {
+          return actions.subscription.create({
+            plan_id: 'P-0UR33161F2240691LNA7RJ4A'
+          });
+        },
+        onApprove(data) {
+          db.collection('licenses')
+            .where('email', '==', buyerEmail)
+            .get()
+            .then(snapshot => {
+              if (snapshot.size >= 3) {
+                alert('Maximum of 3 licenses per email reached.');
+                return;
+              }
+              const licenseKey = generateLicenseKey();
+              return db.collection('licenses').add({
+                email: buyerEmail,
+                licenseKey: licenseKey,
+                purchaseType: 'subscription',
+                paypalID: data.subscriptionID,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+              })
+              .then(() => {
+                showThankYouModal(buyerEmail, licenseKey);
+              });
+            })
+            .catch(err => {
+              console.error('Firestore error:', err);
+              alert('Could not store license. Please try again.');
+            });
+        },
+        onError(err) {
+          console.error('PayPal subscribe error:', err);
+          alert('Subscription failed. Please try again.');
+        }
+      }).render('#paypal-button-container-subscribe');
+
+      // One-Time Purchase Button
+      paypal.HostedButtons({
+        hostedButtonId: '8D52BLYAL3DF2',
+        onApprove(data) {
+          db.collection('licenses')
+            .where('email', '==', buyerEmail)
+            .get()
+            .then(snapshot => {
+              if (snapshot.size >= 3) {
+                alert('Maximum of 3 licenses per email reached.');
+                return;
+              }
+              const licenseKey = generateLicenseKey();
+              return db.collection('licenses').add({
+                email: buyerEmail,
+                licenseKey: licenseKey,
+                purchaseType: 'one-time',
+                paypalID: data.orderID,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+              })
+              .then(() => {
+                showThankYouModal(buyerEmail, licenseKey);
+              });
+            })
+            .catch(err => {
+              console.error('Firestore error:', err);
+              alert('Could not store license. Please try again.');
+            });
+        },
+        onError(err) {
+          console.error('PayPal one-time error:', err);
+          alert('Purchase failed. Please try again.');
+        }
+      }).render('#paypal-button-container-onetime');
+    }
+  </script>
+  <script>
+    /********************************************************
+     * Helper: Show “Thank You” Modal with license & link
+     ********************************************************/
+    function showThankYouModal(email, licenseKey) {
+      document.getElementById('customer-email').textContent = email;
+      document.getElementById('customer-license').textContent = licenseKey;
+      // TODO: Replace with your actual DMG / .zip download URL
+      document.getElementById('download-link').href = 'https://example.com/CardLocker-latest.dmg';
+      document.getElementById('thankyou-modal').style.display = 'flex';
+    }
+    document.getElementById('close-modal').addEventListener('click', () => {
+      document.getElementById('thankyou-modal').style.display = 'none';
+    });
+=======
         // Show the email field next to this button
         const planDiv = btn.closest('.plan');
         const emailField = planDiv.querySelector('.email-field');
         emailField.style.display = 'flex';
+>>>>>>> cb338932c2f24177d226e049d124a7db99e72d65
 
+<<<<<<< HEAD
+    /********************************************************
+     * 3) LICENSE VERIFICATION FORM
+     ********************************************************/
+    document.getElementById('license-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const email = document.getElementById('verify-email').value.trim();
+      const key   = document.getElementById('verify-key').value.trim();
+=======
         // Focus the email input
         const input = emailField.querySelector('input');
         input.focus();
@@ -578,6 +827,7 @@
         }).render('#paypal-button-container-subscribe');
       }
     }
+>>>>>>> cb338932c2f24177d226e049d124a7db99e72d65
 
     function renderLifetimeButton(email) {
       if (!lifeContainer.hasChildNodes()) {
