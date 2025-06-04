@@ -68,7 +68,7 @@ export default async function handler(req, res) {
 
   // 3c) Verify signature
   try {
-    const request = new CheckoutNodeJssdk.notification.VerifyWebhookSignatureRequest();
+    const request = new CheckoutNodeJssdk.notification.webhooks.VerifyWebhookSignatureRequest();
     request.requestBody(verifyRequest);
     const response = await paypalClient.execute(request);
     const verificationStatus = response.result.verification_status;
