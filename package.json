@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/zeroxjf/CardLocker#readme",
   "dependencies": {
-    "@vercel/blob": "^1.1.1"
+    "@vercel/blob": "^1.1.1",
+    "firebase-admin": "^13.4.0"
   }
 }

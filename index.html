@@ -573,39 +573,23 @@
             return actions.subscription.create({ plan_id: 'P-0UR33161F2240691LNA7RJ4A' });
           },
           onApprove(data) {
-            // Firestore logic here (similar to existing code)
-            db.collection('licenses')
-              .where('email', '==', email)
-              .get()
-              .then(snapshot => {
-                if (snapshot.size >= 5) {
-                  alert('Maximum of 5 licenses per email reached.');
-                  return;
-                }
-                const licenseKey = generateLicenseKey();
-                return db.collection('licenses').add({
-                  email: email,
-                  licenseKey: licenseKey,
-                  purchaseType: 'subscription',
-                  paypalID: data.subscriptionID,
-                  timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                })
-                .then(() => {
-                  showThankYouModal(email, licenseKey);
-                  // After showing the thank you modal, fetch a signed URL and update the download link
-                  fetch(`/api/get-signed-url?file=CardLocker-qNcAFlKgf0ku0HXcgI0DXm3utFmtoZ.dmg`)
-                    .then(res => res.json())
-                    .then(data => {
-                      const downloadLink = document.getElementById('download-link');
-                      downloadLink.href = data.signedUrl;
-                      downloadLink.textContent = 'Download CardLocker';
-                    })
-                    .catch(err => console.error('Error fetching signed URL:', err));
-                })
-                .catch(err => {
-                  console.error('Firestore error:', err);
-                  alert('Could not store license. Please try again.');
-                });
+            // Call server to create license and get signed URL
+            fetch('/api/purchase', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: email })
+            })
+              .then(res => {
+                if (!res.ok) throw new Error('Server error ' + res.status);
+                return res.json();
+              })
+              .then(({ licenseKey, signedUrl }) => {
+                showThankYouModal(email, licenseKey);
+                window.location.href = signedUrl;
+              })
+              .catch(err => {
+                console.error('Purchase endpoint error:', err);
+                alert('Could not complete purchase.');
               });
           },
           onError(err) {
@@ -626,41 +610,24 @@
             });
           },
           onApprove(data, actions) {
-            return actions.order.capture().then(details => {
-              db.collection('licenses')
-                .where('email', '==', email)
-                .get()
-                .then(snapshot => {
-                  if (snapshot.size >= 5) {
-                    alert('Maximum of 5 licenses per email reached.');
-                    return;
-                  }
-                  const licenseKey = generateLicenseKey();
-                  return db.collection('licenses').add({
-                    email: email,
-                    licenseKey: licenseKey,
-                    purchaseType: 'one-time',
-                    paypalID: data.orderID,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                  })
-                  .then(() => {
-                    showThankYouModal(email, licenseKey);
-                    // After showing the thank you modal, fetch a signed URL and update the download link
-                    fetch(`/api/get-signed-url?file=CardLocker-qNcAFlKgf0ku0HXcgI0DXm3utFmtoZ.dmg`)
-                      .then(res => res.json())
-                      .then(data => {
-                        const downloadLink = document.getElementById('download-link');
-                        downloadLink.href = data.signedUrl;
-                        downloadLink.textContent = 'Download CardLocker';
-                      })
-                      .catch(err => console.error('Error fetching signed URL:', err));
-                  })
-                  .catch(err => {
-                    console.error('Firestore error:', err);
-                    alert('Could not store license. Please try again.');
-                  });
-                });
-            });
+            // Call server to create license and get signed URL
+            fetch('/api/purchase', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: email })
+            })
+              .then(res => {
+                if (!res.ok) throw new Error('Server error ' + res.status);
+                return res.json();
+              })
+              .then(({ licenseKey, signedUrl }) => {
+                showThankYouModal(email, licenseKey);
+                window.location.href = signedUrl;
+              })
+              .catch(err => {
+                console.error('Purchase endpoint error:', err);
+                alert('Could not complete purchase.');
+              });
           },
           onError(err) {
             console.error('PayPal one-time purchase error:', err);
@@ -683,39 +650,31 @@
     });
   // Test purchase simulation
   document.getElementById('test-purchase').addEventListener('click', async () => {
-    const email = prompt('Enter test email for purchase simulation:');
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      console.error('Invalid email entered.');
-      return;
-    }
-    const trimmedEmail = email.trim();
-    console.log('Simulating purchase for email:', trimmedEmail);
-    try {
-      const snapshot = await db.collection('licenses').where('email', '==', trimmedEmail).get();
-      console.log('Existing licenses found:', snapshot.size);
-      if (snapshot.size >= 5) {
-        alert('Maximum of 5 licenses per email reached.');
+      const email = prompt('Enter test email for purchase simulation:');
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        console.error('Invalid email entered.');
         return;
       }
-      const licenseKey = generateLicenseKey();
-      console.log('Generated license key:', licenseKey);
-      await db.collection('licenses').add({
-        email: trimmedEmail,
-        licenseKey: licenseKey,
-        purchaseType: 'test-simulation',
-        paypalID: 'TEST-' + Date.now(),
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      console.log('License document written to Firestore.');
-      showThankYouModal(trimmedEmail, licenseKey);
-      console.log('Thank you modal displayed.');
-      const response = await fetch(`/api/get-signed-url?file=CardLocker-qNcAFlKgf0ku0HXcgI0DXm3utFmtoZ.dmg`);
-      const data = await response.json();
-      console.log('Received signed URL:', data.signedUrl);
-      window.location.href = data.signedUrl;
-    } catch (err) {
-      console.error('Test purchase simulation error:', err);
-    }
+      const trimmedEmail = email.trim();
+
+      try {
+        // Call our unified purchase endpoint (server will write to Firestore and return signed URL)
+        const response = await fetch('/api/purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: trimmedEmail })
+        });
+        if (!response.ok) {
+          throw new Error('Server error ' + response.status);
+        }
+        const { licenseKey, signedUrl } = await response.json();
+        console.log('License created:', licenseKey);
+        showThankYouModal(trimmedEmail, licenseKey);
+        window.location.href = signedUrl;
+      } catch (err) {
+        console.error('Purchase endpoint error:', err);
+        alert('Could not complete purchase.');
+      }
   });
   });
 </script>
