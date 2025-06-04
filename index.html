@@ -472,41 +472,6 @@
       <button class="close-btn" id="close-modal">Close</button>
     </div>
   </div>
-<!-- Subscription PayPal link customization -->
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    // When subscription email input is valid and “Select” was clicked:
-    const subLink = document.getElementById('paypal-button-container-subscribe');
-    // Grab stored email value (updated by your existing JS once user types)
-    const emailInputSub = document.getElementById('email-subscribe');
-    emailInputSub.addEventListener('input', () => {
-      const email = encodeURIComponent(emailInputSub.value.trim());
-      if (email) {
-        subLink.href = subLink.href.split('&custom=')[0] + '&custom=' + email +
-          '&return=' + encodeURIComponent(subLink.dataset.return) +
-          '&cancel_return=' + encodeURIComponent(subLink.dataset.cancel) +
-          '&notify_url=' + encodeURIComponent(subLink.dataset.notify);
-      }
-    });
-  });
-</script>
-<!-- Lifetime PayPal link customization -->
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    // When lifetime email input is valid and “Select” was clicked:
-    const lifeLink = document.getElementById('paypal-container-8D52BLYAL3DF2');
-    const emailInputLife = document.getElementById('email-lifetime');
-    emailInputLife.addEventListener('input', () => {
-      const email = encodeURIComponent(emailInputLife.value.trim());
-      if (email) {
-        lifeLink.href = lifeLink.href.split('&custom=')[0] + '&custom=' + email +
-          '&return=' + encodeURIComponent(lifeLink.dataset.return) +
-          '&cancel_return=' + encodeURIComponent(lifeLink.dataset.cancel) +
-          '&notify_url=' + encodeURIComponent(lifeLink.dataset.notify);
-      }
-    });
-  });
-</script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     // Function to display the thank you modal
@@ -552,11 +517,7 @@
         // Listen for input changes to validate email
         input.addEventListener('input', () => {
           if (isValidEmail(input.value.trim())) {
-            purchaseLink.style.pointerEvents = 'auto';
-            purchaseLink.style.opacity = '1';
-          } else {
-            purchaseLink.style.pointerEvents = 'none';
-            purchaseLink.style.opacity = '0.6';
+            renderSubscriptionButton(input.value.trim());
           }
         });
       });
@@ -643,17 +604,15 @@
       }
     }
 
-    // Handle clicking on the rendered purchase buttons
-    document.addEventListener('click', function(e) {
-      if (e.target.id === 'paypal-button-container-subscribe' && !e.target.disabled) {
-        const email = document.getElementById('email-subscribe').value.trim();
-        renderSubscriptionButton(email);
-      }
-      if (e.target.id === 'paypal-container-8D52BLYAL3DF2' && !e.target.disabled) {
-        const email = document.getElementById('email-lifetime').value.trim();
-        renderLifetimeButton(email);
-      }
-    });
+    // Lifetime plan email input validation
+    const emailInputLife = document.getElementById('email-lifetime');
+    if (emailInputLife) {
+      emailInputLife.addEventListener('input', () => {
+        if (isValidEmail(emailInputLife.value.trim())) {
+          renderLifetimeButton(emailInputLife.value.trim());
+        }
+      });
+    }
   });
 </script>
 </body>
