@@ -509,11 +509,6 @@
         const input = emailField.querySelector('input');
         input.focus();
 
-        // Disable the purchase link until valid email
-        const purchaseLink = emailField.querySelector('a');
-        purchaseLink.style.pointerEvents = 'none';
-        purchaseLink.style.opacity = '0.6';
-
         // Listen for input changes to validate email
         input.addEventListener('input', () => {
           if (isValidEmail(input.value.trim())) {
