@@ -350,15 +350,6 @@
     .close-btn:hover {
       background-color: #005bb5;
     }
-    /* Force PayPal subscription button to expand full-width */
-    #paypal-button-container-subscribe,
-    #paypal-button-container-subscribe .paypal-button {
-      width: 100% !important;
-    }
-    /* Remove any default max-width on the PayPal iframe */
-    #paypal-button-container-subscribe iframe {
-      max-width: none !important;
-    }
   </style>
 <script
   src="https://www.paypal.com/sdk/js?client-id=ARmFJUNL-2grFv62pdVgTgbaulkPP-lj2_3yEpzjdtz6RWt-h7ISTHqKTolA715eeR-74mIyu-MNE6Mp&vault=false"
@@ -580,13 +571,7 @@
     function renderSubscriptionButton(email) {
       if (!subContainer.hasChildNodes()) {
         paypalVault.Buttons({
-          style: {
-            shape: 'rect',
-            color: 'blue',
-            layout: 'vertical',
-            label: 'subscribe',
-            size: 'responsive'
-          },
+          style: { shape: 'rect', color: 'blue', layout: 'vertical', label: 'subscribe' },
           createSubscription(data, actions) {
             return actions.subscription.create({
               plan_id: 'P-0UR33161F2240691LNA7RJ4A',
