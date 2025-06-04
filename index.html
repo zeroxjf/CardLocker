@@ -355,6 +355,10 @@
   src="https://www.paypal.com/sdk/js?client-id=ARmFJUNL-2grFv62pdVgTgbaulkPP-lj2_3yEpzjdtz6RWt-h7ISTHqKTolA715eeR-74mIyu-MNE6Mp&vault=false"
   data-namespace="paypalBuy"
 ></script>
+<script
+  src="https://www.paypal.com/sdk/js?client-id=ARmFJUNL-2grFv62pdVgTgbaulkPP-lj2_3yEpzjdtz6RWt-h7ISTHqKTolA715eeR-74mIyu-MNE6Mp&vault=true"
+  data-namespace="paypalVault"
+></script>
 </head>
 <body>
   <!-- Firebase SDKs -->
@@ -566,7 +570,7 @@
     // Ensure PayPal SDK is loaded before rendering
     function renderSubscriptionButton(email) {
       if (!subContainer.hasChildNodes()) {
-        paypalBuy.Buttons({
+        paypalVault.Buttons({
           style: { shape: 'rect', color: 'blue', layout: 'vertical', label: 'subscribe' },
           createSubscription(data, actions) {
             return actions.subscription.create({
