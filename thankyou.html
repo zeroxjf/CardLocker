@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thank You – CardLocker</title>
+  <!-- Import Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+                   Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+      background-color: #f9f9fb;
+      margin: 0;
+      padding: 2rem;
+      text-align: center;
+      color: #1c1c1e;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 500px;
+      margin: 2rem auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    input, button {
+      width: 100%;
+      padding: 0.75rem;
+      margin-top: 1rem;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: 1px solid #d1d1d6;
+    }
+    button {
+      background-color: #007aff;
+      color: #ffffff;
+      border: none;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #a1a1aa;
+      cursor: default;
+    }
+    .license-key {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 1rem 0;
+      color: #0056b3;
+    }
+    .error {
+      color: #d0021b;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Thank You!</h1>
+    <p>Your payment was successful. Please enter the email you used, and we’ll show your license key below:</p>
+    <input type="email" id="lookup-email" placeholder="Enter your email" />
+    <button id="lookup-btn" disabled>Get My License</button>
+    <div id="message"></div>
+  </div>
+
+  <script>
+    // ===== Initialize Firebase (Use YOUR Firebase config here) =====
+    const firebaseConfig = {
+      apiKey: "...",
+      authDomain: "...",
+      projectId: "YOUR_PROJECT_ID",
+      // ...other config...
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Simple email validation
+    function isValidEmail(e) {
+      return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(e);
+    }
+
+    const emailInput = document.getElementById('lookup-email');
+    const lookupBtn = document.getElementById('lookup-btn');
+    const messageDiv = document.getElementById('message');
+
+    // Enable/disable button
+    emailInput.addEventListener('input', () => {
+      if (isValidEmail(emailInput.value.trim())) {
+        lookupBtn.disabled = false;
+      } else {
+        lookupBtn.disabled = true;
+      }
+    });
+
+    lookupBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      messageDiv.innerHTML = 'Searching...';
+      try {
+        const snapshot = await db.collection('licenses')
+                                 .where('email', '==', email)
+                                 .orderBy('timestamp', 'desc')
+                                 .limit(1)
+                                 .get();
+        if (snapshot.empty) {
+          messageDiv.innerHTML = '<p class="error">No license found for that email. Please check your email or contact support.</p>';
+        } else {
+          const data = snapshot.docs[0].data();
+          messageDiv.innerHTML = `
+            <p class="license-key">${data.licenseKey}</p>
+            <p>We also emailed this key to <strong>${email}</strong>.</p>
+            <p><a href="/download">Download CardLocker for macOS</a></p>
+          `;
+        }
+      } catch (err) {
+        console.error(err);
+        messageDiv.innerHTML = '<p class="error">There was an error retrieving your license. Please try again later.</p>';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CardLocker – Secure Offline Credit Card Storage</title>
+  <title>CardLocker for macOS</title>
   <style>
     /* =========== Reset & Base Styles =========== */
     * {
@@ -11,335 +11,629 @@
       margin: 0;
       padding: 0;
     }
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(to bottom right, #f0f4f8, #d9e2ec);
-      color: #333;
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+                   Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+      background-color: #f9f9fb;
+      color: #1c1c1e;
+      -webkit-font-smoothing: antialiased;
       min-height: 100vh;
+    }
+    a {
+      color: #007aff;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+    a:hover {
+      color: #005bb5;
+      text-decoration: underline;
+    }
+
+    /* ===== Container ===== */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    /* ===== Navbar ===== */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 0;
+      background-color: #ffffff;
+      border-bottom: 1px solid #e0e0e5;
+    }
+    .nav-brand {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #007aff;
+    }
+    .nav-links {
+      list-style: none;
+      display: flex;
+      gap: 2rem;
+    }
+    .nav-links li a {
+      font-weight: 500;
+      padding: 0.5rem 0;
+      color: #1c1c1e;
+      transition: color 0.2s ease;
+    }
+    .nav-links li a:hover {
+      color: #007aff;
+    }
+
+    /* ===== Hero Section ===== */
+    .hero {
+      text-align: center;
+      padding: 3rem 1rem;
+      background-color: #ffffff;
+      margin-bottom: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .hero h1.title-with-icon {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #0056b3;
+    }
+    .hero p.intro {
+      margin-top: 1rem;
+      font-size: 1.125rem;
+      line-height: 1.5;
+      color: #3c3c43;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* ===== Main Layout ===== */
+    main {
+      display: flex;
+      justify-content: space-between;
+      gap: 3rem;
+      flex-wrap: wrap;
+      margin-bottom: 3rem;
+    }
+    .card-container {
+      flex: 1 1 600px;
       display: flex;
       flex-direction: column;
-    }
-    header {
-      background-color: #1a73e8;
-      color: white;
-      padding: 2rem 1rem;
-      text-align: center;
-    }
-    header h1 {
-      font-size: 2.5rem;
-      margin-bottom: 0.5rem;
-    }
-    header p {
-      font-size: 1.2rem;
-    }
-    main {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
       gap: 2rem;
-      padding: 2rem;
-      max-width: 1200px;
-      margin: 0 auto;
     }
-    section {
-      background-color: white;
-      border-radius: 8px;
-      padding: 2rem;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    .side-panel {
+      flex: 0 0 350px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 2rem;
     }
-    section h2 {
+
+    /* ===== Card Styling & Hover Effects ===== */
+    .card {
+      background-color: #ffffff;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    }
+    .card h2 {
       font-size: 1.5rem;
       margin-bottom: 1rem;
-      color: #1a73e8;
+      color: #0056b3;
     }
-    section p {
-      margin-bottom: 1.5rem;
+    .card p,
+    .card ul,
+    .card ul li {
+      font-size: 1rem;
       line-height: 1.6;
+      color: #2c2c2e;
     }
-    footer {
-      background-color: #f1f3f4;
+    .card ul {
+      padding-left: 1.25rem;
+    }
+    .card ul li {
+      margin-bottom: 0.75rem;
+    }
+
+    /* ===== Screenshot & Icon Adjustments ===== */
+    .app-icon-inline {
+      width: 40px;
+      height: 40px;
+    }
+    .screenshot {
+      width: 100%;
+      max-width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      margin-bottom: 1rem;
+      object-fit: cover;
+    }
+
+    /* ===== Footer ===== */
+    .site-footer {
+      background-color: #f2f2f7;
+      border-top: 1px solid #d1d1d6;
+      padding: 1.5rem 0;
+      margin-top: 3rem;
+    }
+    .footer-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .footer-links a {
+      color: #3c3c43;
+      text-decoration: none;
+      margin: 0 0.5rem;
+      font-weight: 500;
+    }
+    .footer-links a:hover {
+      color: #007aff;
+    }
+
+    /* Section Spacing */
+    #features, 
+    #how-it-works, 
+    #purchase, 
+    #resend {
+      margin-bottom: 2rem;
+    }
+
+    /* Privacy disclaimer */
+    .privacy-disclaimer {
+      font-size: 0.875rem;
+      color: #6e6e73;
+      font-style: italic;
       text-align: center;
-      padding: 1rem;
-      font-size: 0.9rem;
-      color: #555;
+      margin: 2rem 1rem 0;
     }
-    /* Modal backdrop & container */
+
+    /* ===== Plan Options Styling ===== */
+    /* ===== Modal Backdrop ===== */
     .modal-backdrop {
       position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       background: rgba(0,0,0,0.5);
       display: none;
       justify-content: center;
       align-items: center;
       z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.3s ease;
     }
-    .modal {
-      background: white;
-      border-radius: 8px;
-      max-width: 500px;
-      width: 90%;
-      padding: 1.5rem;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    .modal-backdrop.show {
+      display: flex;
+      opacity: 1;
     }
-    .modal h3 {
-      margin-bottom: 1rem;
-      color: #1a73e8;
-    }
-    .modal p {
-      margin-bottom: 1rem;
-    }
-    .modal button.close-btn {
-      background: #1a73e8;
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    /* License Verification Form */
-    #license-form {
-      margin-top: 2rem;
-    }
-    #license-form input {
-      width: 100%;
-      padding: 0.5rem;
-      margin-bottom: 0.75rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    #license-form button {
-      background: #1a73e8;
-      color: white;
-      border: none;
-      padding: 0.6rem 1.2rem;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    #license-result {
+    .plan-options {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
       margin-top: 1rem;
-      font-weight: bold;
     }
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-      main {
-        grid-template-columns: 1fr;
-        padding: 1rem;
-      }
+    .plan {
+      flex: 1 1 150px;
+      background-color: #f9f9f9;
+      border: 1px solid #d1d1d6;
+      border-radius: 10px;
+      padding: 1rem 1rem 6rem;
+      text-align: center;
+      position: relative;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .plan:hover {
+      border-color: #007aff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .plan h3 {
+      font-size: 1.25rem;
+      margin-bottom: 0.75rem;
+      color: #1c1c1e;
+    }
+    .plan p {
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      color: #3c3c43;
+    }
+    .plan .badge {
+      position: absolute;
+      top: -0.5rem;
+      right: -0.5rem;
+      background-color: #007aff;
+      color: #ffffff;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.5rem;
+      border-radius: 8px;
+    }
+    .plan-select {
+      background-color: #007aff;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .plan-select:hover {
+      background-color: #005bb5;
+    }
+    .email-field {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      width: 100%;
+      margin-top: 1rem;
+    }
+    .email-field input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.75rem;
+      border: 1px solid #d1d1d6;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+    .email-field a {
+      display: block;
+      width: 100%;
+      text-align: center;
+      background-color: #34c759;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem;
+      font-size: 1rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .email-field a:disabled,
+    .email-field a[disabled] {
+      background-color: #a1a1aa;
+      cursor: default;
+      pointer-events: none;
+    }
+    .email-field a:not([disabled]):hover {
+      background-color: #28a745;
     }
   </style>
 </head>
 <body>
-  <!-- ========== Header ========== -->
-  <header>
-    <h1>CardLocker</h1>
-    <p>Secure Offline Credit Card Storage for macOS</p>
-  </header>
+  <div class="container">
+    <!-- ===== Navbar ===== -->
+    <nav class="navbar">
+      <div class="nav-brand">CardLocker</div>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#purchase">Purchase</a></li>
+        <li><a href="#resend">Resend Code</a></li>
+      </ul>
+    </nav>
 
-  <!-- ========== Main Content ========== -->
-  <main>
-    <!-- Subscription Section -->
-    <section>
-      <h2>Subscribe for Full Access</h2>
-      <p>Enjoy unlimited features with our monthly subscription plan. After payment, you’ll receive a license key via email and can download the latest CardLocker app immediately.</p>
-      <div id="paypal-button-container-subscribe"></div>
-    </section>
+    <!-- ===== Hero Section ===== -->
+    <header id="featured" class="hero">
+      <h1 class="title-with-icon">
+        <img src="cardmock2.png" alt="CardLocker Icon" class="app-icon-inline" />
+        CardLocker for macOS
+      </h1>
+      <p class="intro">
+        CardLocker is the card manager you’ve always wished Apple would build. 
+        No more hunting through Safari’s Autofill or digging out your physical wallet. 
+        Inspired by the clean design and functionality of Apple’s Passwords app, CardLocker 
+        brings that same polished, native feel to your credit and debit cards.
+      </p>
+    </header>
 
-    <!-- One-Time Purchase Section -->
-    <section>
-      <h2>One-Time Purchase</h2>
-      <p>Prefer a one-time payment? Get lifetime access with a single purchase. You’ll receive a unique license key via email and download instructions right away.</p>
-      <div id="paypal-button-container-onetime"></div>
-    </section>
-  </main>
+    <!-- ===== Main Content ===== -->
+    <main>
+      <div class="card-container">
+        <div class="card" id="pricing">
+          <h2>Pricing</h2>
+          <p>Choose the plan that suits you. No email required to view these options:</p>
+          <div class="plan-options">
+            <div class="plan">
+              <h3>Subscription</h3>
+              <p><strong>$1.99/month</strong> – Cancel anytime</p>
+              <button class="plan-select" data-plan="subscribe">Select</button>
+              <div class="email-field" style="display: none;">
+                <input type="email" id="email-subscribe" name="email-subscribe" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Enter your email" />
+                <a 
+                  id="paypal-button-container-subscribe" 
+                  class="email-button" 
+                  href="https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-0UR33161F2240691LNA7RJ4A"
+                  target="_blank"
+                >Subscribe Now</a>
+              </div>
+            </div>
+            <div class="plan">
+              <div class="badge">Best Value</div>
+              <h3>Lifetime License</h3>
+              <p><strong>$20</strong> – One-time payment</p>
+              <button class="plan-select" data-plan="lifetime">Select</button>
+              <div class="email-field" style="display: none;">
+                <input type="email" id="email-lifetime" name="email-lifetime" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Enter your email" />
+                <a 
+                  id="paypal-container-8D52BLYAL3DF2" 
+                  class="email-button" 
+                  href="https://www.paypal.com/ncp/payment/J9WTV3VYN8X5Y"
+                  target="_blank"
+                >Buy Now</a>
+              </div>
+            </div>
+          </div>
+        </div>
 
-  <!-- ========== License Verification Section ========== -->
-  <section style="max-width:600px; margin: 2rem auto 0; background:#fff; border-radius:8px; padding:2rem; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
-    <h2>Verify Your License Key</h2>
-    <p>If you already have a license key, enter it below along with your email to unlock CardLocker.</p>
-    <form id="license-form">
-      <input type="email" id="verify-email" placeholder="Email used at purchase" required />
-      <input type="text" id="verify-key" placeholder="Enter your license key" required />
-      <button type="submit">Verify License</button>
-    </form>
-    <div id="license-result"></div>
-  </section>
+        <!-- Key Features -->
+        <div class="card" id="features">
+          <h2>Key Features</h2>
+          <ul>
+            <li><strong>Native macOS Experience:</strong> Tucked in your menu bar or standalone window—with familiar controls and smooth animations.</li>
+            <li><strong>Simple Card Entry:</strong> Tap “+” to enter nickname, number, expiry, CVV—then save in a native-style form.</li>
+            <li><strong>Secure Storage:</strong> Card numbers stay locked in your Keychain; only non-sensitive metadata travels over iCloud.</li>
+            <li><strong>Quick Access:</strong> Click to edit inline or enter Edit mode for bulk delete/recovery.</li>
+            <li><strong>Recovery Options:</strong> Deleted cards live in “Recently Deleted” for 30 days.</li>
+            <li><strong>Efficient Search and Organization:</strong> Lightning-fast search, filters (Credit, Debit, Rewards, Business, Deleted), and smart sorting.</li>
+            <li><strong>Customization:</strong> Dark Mode support and customizable category labels to fit right into macOS.</li>
+          </ul>
+        </div>
 
-  <!-- ========== Thank-You / Download Modal ========== -->
+        <div class="card" id="how-it-works">
+          <h2>How It Works</h2>
+          <p>CardLocker never transmits your raw card data anywhere. Here’s how it keeps your information secure:</p>
+          <ul>
+            <li><strong>Local Encryption:</strong> All card numbers are encrypted and stored in your macOS Keychain. Only your device’s secure enclave can decrypt the data.</li>
+            <li><strong>No Server Storage:</strong> We never upload your sensitive card details to any server. Only non-sensitive metadata (like nicknames and categories) can be optionally synced via iCloud.</li>
+            <li><strong>Open Source Transparency:</strong> The full source code is available on GitHub so you can audit every line: 
+              <a href="https://github.com/zeroxjf/CardLocker" target="_blank" rel="noopener">github.com/zeroxjf/CardLocker</a>.
+            </li>
+            <li><strong>Secure Key Generation:</strong> License keys are generated client-side and stored in Firestore associated only with your email; CardLocker never holds your payment credentials.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="side-panel">
+        <img src="display1.png" alt="CardLocker Screenshot 1" class="screenshot" />
+        <img src="display2.png" alt="CardLocker Screenshot 2" class="screenshot" />
+
+
+        <div class="card license-section" id="resend">
+          <h2>Resend License Code</h2>
+          <p>Enter your email to have your license code resent to you.</p>
+          <form id="resend-form">
+            <input type="email" id="resend-email" placeholder="Enter your email" required />
+            <button type="submit">Resend License</button>
+          </form>
+          <div id="resend-result"></div>
+        </div>
+      </div>
+    </main>
+
+
+    <p class="privacy-disclaimer">
+      CardLocker is designed with your privacy in mind. The developer does not collect any data from this app. All sensitive information is securely stored in your device’s Keychain.
+    </p>
+
+    <!-- ===== Footer ===== -->
+    <footer class="site-footer">
+      <div class="footer-container">
+        <div>&copy; 2025 CardLocker. All rights reserved.</div>
+        <div class="footer-links">
+          <a href="#features">Features</a> |
+          <a href="#purchase">Purchase</a> |
+          <a href="#resend">Resend Code</a>
+        </div>
+      </div>
+    </footer>
+</div>
   <div class="modal-backdrop" id="thankyou-modal">
     <div class="modal">
       <h3>Thank You for Your Purchase!</h3>
       <p id="modal-message">
         A license key has been emailed to you at <span id="customer-email"></span>. Your key is:
       </p>
-      <p><strong id="customer-license" style="font-size:1.2rem;"></strong></p>
+      <p><strong id="customer-license"></strong></p>
       <p>You can download CardLocker for macOS here:</p>
-      <p><a id="download-link" href="#" style="color:#1a73e8; text-decoration:underline;">Download CardLocker</a></p>
+      <p><a id="download-link" href="#">Download CardLocker</a></p>
       <button class="close-btn" id="close-modal">Close</button>
     </div>
   </div>
-
-  <!-- ========== Footer ========== -->
-  <footer>
-    &copy; 2025 CardLocker. All rights reserved.
-  </footer>
-
-  <!-- ========== PayPal SDKs ========== -->
-  <!-- Subscription SDK -->
-  <script src="https://www.paypal.com/sdk/js?client-id=AWx0Fkp-mTSlluAReoXDXFPd1OEWWqsCnhHyTQgTI45sQ_dmap1iqLfJGrH_Bo_wny3-N2U-IOnDZ4ka&vault=true&intent=subscription"></script>
-  <!-- One-Time Purchase SDK -->
-  <script src="https://www.paypal.com/sdk/js?client-id=BAAgb51-SAOh9DHzMLyYn1WbHBnC3IED6ll60NBiqpTRoPoscu3atWSX7_1je-bBhapKs0u8uxC4FngVUo&components=hosted-buttons&enable-funding=venmo&currency=USD"></script>
-
-  <script>
-    /********************************************************
-     * Helper: Show “Thank You” Modal with license & link
-     ********************************************************/
-    function showThankYouModal(email, licenseKey) {
-      document.getElementById('customer-email').textContent = email;
-      document.getElementById('customer-license').textContent = licenseKey;
-      // TODO: Replace with your actual DMG / .zip download URL
-      document.getElementById('download-link').href = 'https://example.com/CardLocker-latest.dmg';
-      document.getElementById('thankyou-modal').style.display = 'flex';
-    }
-    document.getElementById('close-modal').addEventListener('click', () => {
-      document.getElementById('thankyou-modal').style.display = 'none';
+<!-- Subscription PayPal link customization -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // When subscription email input is valid and “Select” was clicked:
+    const subLink = document.getElementById('paypal-button-container-subscribe');
+    // Grab stored email value (updated by your existing JS once user types)
+    const emailInputSub = document.getElementById('email-subscribe');
+    emailInputSub.addEventListener('input', () => {
+      const email = encodeURIComponent(emailInputSub.value.trim());
+      if (email) {
+        subLink.href = subLink.href.split('&custom=')[0] + '&custom=' + email +
+          '&return=' + encodeURIComponent(subLink.dataset.return) +
+          '&cancel_return=' + encodeURIComponent(subLink.dataset.cancel) +
+          '&notify_url=' + encodeURIComponent(subLink.dataset.notify);
+      }
     });
-
-    /********************************************************
-     * 1) PAYPAL SUBSCRIPTION BUTTON
-     ********************************************************/
-    paypal.Buttons({
-      style: {
-        shape: 'rect',
-        color: 'gold',
-        layout: 'vertical',
-        label: 'subscribe'
-      },
-      createSubscription: function(data, actions) {
-        return actions.subscription.create({
-          plan_id: 'P-0UR33161F2240691LNA7RJ4A'
-        });
-      },
-      onApprove: function(data, actions) {
-        // 1) Retrieve payer email from PayPal
-        actions.subscription.get().then(function(details) {
-          const payerEmail = details.subscriber.email_address || details.subscriber.name.email; 
-          // 2) Generate license key via backend
-          fetch('/api/generate-license', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: payerEmail,
-              purchaseType: 'subscription',
-              paypalSubscriptionID: data.subscriptionID
-            })
-          })
-          .then(res => res.json())
-          .then(json => {
-            const licenseKey = json.licenseKey; // e.g. "ABCD-1234-WXYZ"
-            // 3) Send license via email (optional separate endpoint)
-            fetch('/api/send-license-email', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                email: payerEmail,
-                licenseKey: licenseKey
-              })
-            });
-            // 4) Show modal with download link & license
-            showThankYouModal(payerEmail, licenseKey);
-          })
-          .catch(err => {
-            console.error('License generation failed:', err);
-            alert('Something went wrong generating your license. Please contact support.');
-          });
-        });
-      },
-      onError: function(err) {
-        console.error('PayPal subscribe error:', err);
-        alert('Subscription failed. Please try again.');
+  });
+</script>
+<!-- Lifetime PayPal link customization -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // When lifetime email input is valid and “Select” was clicked:
+    const lifeLink = document.getElementById('paypal-container-8D52BLYAL3DF2');
+    const emailInputLife = document.getElementById('email-lifetime');
+    emailInputLife.addEventListener('input', () => {
+      const email = encodeURIComponent(emailInputLife.value.trim());
+      if (email) {
+        lifeLink.href = lifeLink.href.split('&custom=')[0] + '&custom=' + email +
+          '&return=' + encodeURIComponent(lifeLink.dataset.return) +
+          '&cancel_return=' + encodeURIComponent(lifeLink.dataset.cancel) +
+          '&notify_url=' + encodeURIComponent(lifeLink.dataset.notify);
       }
-    }).render('#paypal-button-container-subscribe');
+    });
+  });
+</script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Helper to validate email format
+    function isValidEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
 
-    /********************************************************
-     * 2) PAYPAL ONE-TIME PURCHASE BUTTON
-     ********************************************************/
-    paypal.HostedButtons({
-      hostedButtonId: '8D52BLYAL3DF2',
-      onApprove: function(data, actions) {
-        // Note: Hosted Buttons don’t expose details() the same way; 
-        // instead rely on your IPN/webhook (or PayPal callback) server-side 
-        // to capture buyer info. For demo, we’ll prompt email manually.
-        const payerEmail = prompt('To complete your license, please enter the email you used for PayPal:');
-        if (!payerEmail) {
-          return alert('Email is required to send you a license key.');
-        }
-        // 1) Generate license key
-        fetch('/api/generate-license', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: payerEmail,
-            purchaseType: 'one-time',
-            paypalOrderID: data.orderID    // Hosted Buttons set orderID implicitly
-          })
-        })
-        .then(res => res.json())
-        .then(json => {
-          const licenseKey = json.licenseKey;
-          // 2) Email license
-          fetch('/api/send-license-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: payerEmail, licenseKey: licenseKey })
-          });
-          // 3) Show modal
-          showThankYouModal(payerEmail, licenseKey);
-        })
-        .catch(err => {
-          console.error('License generation failed:', err);
-          alert('Could not generate your license. Please contact support.');
+    // Find all plan-select buttons
+    const planButtons = document.querySelectorAll('.plan-select');
+
+    planButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Hide all other email fields first
+        document.querySelectorAll('.email-field').forEach(field => {
+          field.style.display = 'none';
         });
-      },
-      onError: function(err) {
-        console.error('PayPal one-time error:', err);
-        alert('Purchase failed. Please try again.');
-      }
-    }).render('#paypal-button-container-onetime');
 
+        // Show the email field next to this button
+        const planDiv = btn.closest('.plan');
+        const emailField = planDiv.querySelector('.email-field');
+        emailField.style.display = 'flex';
 
-    /********************************************************
-     * 3) LICENSE VERIFICATION FORM
-     ********************************************************/
-    document.getElementById('license-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const email = document.getElementById('verify-email').value.trim();
-      const key   = document.getElementById('verify-key').value.trim();
+        // Focus the email input
+        const input = emailField.querySelector('input');
+        input.focus();
 
-      if (!email || !key) {
-        return alert('Both email and license key are required.');
-      }
-      fetch('/api/verify-license', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email, licenseKey: key })
-      })
-      .then(res => res.json())
-      .then(json => {
-        const resultDiv = document.getElementById('license-result');
-        if (json.valid) {
-          resultDiv.style.color = 'green';
-          resultDiv.textContent = '✅ License is valid! You may now download CardLocker.';
-        } else {
-          resultDiv.style.color = 'red';
-          resultDiv.textContent = '❌ Invalid license or email. Please check and try again.';
-        }
-      })
-      .catch(err => {
-        console.error('License verification failed:', err);
-        alert('Error verifying license. Please try again later.');
+        // Disable the purchase link until valid email
+        const purchaseLink = emailField.querySelector('a');
+        purchaseLink.style.pointerEvents = 'none';
+        purchaseLink.style.opacity = '0.6';
+
+        // Listen for input changes to validate email
+        input.addEventListener('input', () => {
+          if (isValidEmail(input.value.trim())) {
+            purchaseLink.style.pointerEvents = 'auto';
+            purchaseLink.style.opacity = '1';
+          } else {
+            purchaseLink.style.pointerEvents = 'none';
+            purchaseLink.style.opacity = '0.6';
+          }
+        });
       });
     });
-  </script>
+
+    // Render PayPal buttons when purchase button is clicked
+    const subContainer = document.getElementById('paypal-button-container-subscribe');
+    const lifeContainer = document.getElementById('paypal-container-8D52BLYAL3DF2');
+
+    // Ensure PayPal SDK is loaded before rendering
+    function renderSubscriptionButton(email) {
+      if (!subContainer.hasChildNodes()) {
+        paypal.Buttons({
+          style: { shape: 'rect', color: 'blue', layout: 'vertical', label: 'subscribe' },
+          createSubscription(data, actions) {
+            return actions.subscription.create({ plan_id: 'P-0UR33161F2240691LNA7RJ4A' });
+          },
+          onApprove(data) {
+            // Firestore logic here (similar to existing code)
+            db.collection('licenses')
+              .where('email', '==', email)
+              .get()
+              .then(snapshot => {
+                if (snapshot.size >= 5) {
+                  alert('Maximum of 5 licenses per email reached.');
+                  return;
+                }
+                const licenseKey = generateLicenseKey();
+                return db.collection('licenses').add({
+                  email: email,
+                  licenseKey: licenseKey,
+                  purchaseType: 'subscription',
+                  paypalID: data.subscriptionID,
+                  timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                })
+                .then(() => showThankYouModal(email, licenseKey))
+                .catch(err => {
+                  console.error('Firestore error:', err);
+                  alert('Could not store license. Please try again.');
+                });
+              });
+          },
+          onError(err) {
+            console.error('PayPal subscription error:', err);
+            alert('Subscription failed. Please try again.');
+          }
+        }).render('#paypal-button-container-subscribe');
+      }
+    }
+
+    function renderLifetimeButton(email) {
+      if (!lifeContainer.hasChildNodes()) {
+        paypal.Buttons({
+          style: { shape: 'rect', color: 'gold', layout: 'vertical', label: 'buynow' },
+          createOrder(data, actions) {
+            return actions.order.create({
+              purchase_units: [{ description: 'CardLocker Lifetime License', amount: { value: '20.00' } }]
+            });
+          },
+          onApprove(data, actions) {
+            return actions.order.capture().then(details => {
+              db.collection('licenses')
+                .where('email', '==', email)
+                .get()
+                .then(snapshot => {
+                  if (snapshot.size >= 5) {
+                    alert('Maximum of 5 licenses per email reached.');
+                    return;
+                  }
+                  const licenseKey = generateLicenseKey();
+                  return db.collection('licenses').add({
+                    email: email,
+                    licenseKey: licenseKey,
+                    purchaseType: 'one-time',
+                    paypalID: data.orderID,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                  })
+                  .then(() => showThankYouModal(email, licenseKey))
+                  .catch(err => {
+                    console.error('Firestore error:', err);
+                    alert('Could not store license. Please try again.');
+                  });
+                });
+            });
+          },
+          onError(err) {
+            console.error('PayPal one-time purchase error:', err);
+            alert('Purchase failed. Please try again.');
+          }
+        }).render('#paypal-container-8D52BLYAL3DF2');
+      }
+    }
+
+    // Handle clicking on the rendered purchase buttons
+    document.addEventListener('click', function(e) {
+      if (e.target.id === 'paypal-button-container-subscribe' && !e.target.disabled) {
+        const email = document.getElementById('email-subscribe').value.trim();
+        renderSubscriptionButton(email);
+      }
+      if (e.target.id === 'paypal-container-8D52BLYAL3DF2' && !e.target.disabled) {
+        const email = document.getElementById('email-lifetime').value.trim();
+        renderLifetimeButton(email);
+      }
+    });
+  });
+</script>
 </body>
 </html>
