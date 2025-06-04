@@ -407,7 +407,6 @@
           </div>
         </div>
 
-        <button id="test-purchase" style="margin-top: 1rem; background-color: #007aff; color: #ffffff; border: none; border-radius: 6px; padding: 0.75rem 1rem; cursor: pointer;">Test Purchase</button>
 
         <!-- Key Features -->
         <div class="card" id="features">
@@ -661,34 +660,6 @@
         renderLifetimeButton(email);
       }
     });
-  // Test purchase simulation
-  document.getElementById('test-purchase').addEventListener('click', async () => {
-      const email = prompt('Enter test email for purchase simulation:');
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-        console.error('Invalid email entered.');
-        return;
-      }
-      const trimmedEmail = email.trim();
-
-      try {
-        // Call our unified purchase endpoint (server will write to Firestore and return signed URL)
-        const response = await fetch('/api/purchase', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: trimmedEmail })
-        });
-        if (!response.ok) {
-          throw new Error('Server error ' + response.status);
-        }
-        const { licenseKey, signedUrl } = await response.json();
-        console.log('License created:', licenseKey);
-        showThankYouModal(trimmedEmail, licenseKey);
-        window.location.href = signedUrl;
-      } catch (err) {
-        console.error('Purchase endpoint error:', err);
-        alert('Could not complete purchase.');
-      }
-  });
   });
 </script>
 </body>
