@@ -352,7 +352,7 @@
     }
   </style>
 <script src="https://www.paypal.com/sdk/js?client-id=ARmFJUNL-2grFv62pdVgTgbaulkPP-lj2_3yEpzjdtz6RWt-h7ISTHqKTolA715eeR-74mIyu-MNE6Mp&vault=true">
-  
+
 </script></head>
 <body>
   <!-- Firebase SDKs -->
@@ -572,14 +572,20 @@
               subscriber: { email_address: email }
             });
           },
-          onApprove(data) {
-            // Store subscription ID → email mapping on the server
-            fetch('https://cardlocker.net/api/store-subscription', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ subscriptionId: data.subscriptionID, email: email })
-            }).catch(err => console.error('Error storing subscription mapping:', err));
-            // Show “Thank You” modal with placeholder
+          onApprove: async function (data) {
+            // First, store subscription → email mapping and wait
+            try {
+              await fetch('https://cardlocker.net/api/store-subscription', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subscriptionId: data.subscriptionID, email: email })
+              });
+              console.log('✅ Stored subscription mapping for', data.subscriptionID);
+            } catch (err) {
+              console.error('❌ Error storing subscription mapping:', err);
+            }
+
+            // Now show the “Thank You” modal and start polling
             showThankYouModal(email, 'Generating license…');
 
             // Poll every 2 seconds to check if Firestore has the license
