@@ -312,6 +312,44 @@
     .email-field a:not([disabled]):hover {
       background-color: #28a745;
     }
+    /* Modal window styling */
+    .modal {
+      background-color: #ffffff;
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    .modal h3 {
+      margin-bottom: 1rem;
+      color: #1c1c1e;
+    }
+    .modal p, .modal a, .modal strong {
+      color: #1c1c1e;
+    }
+    .modal a#download-link {
+      display: inline-block;
+      margin-top: 0.5rem;
+      color: #007aff;
+      text-decoration: none;
+    }
+    .modal a#download-link:hover {
+      text-decoration: underline;
+    }
+    .close-btn {
+      margin-top: 1.5rem;
+      background-color: #007aff;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      padding: 0.75rem 1.5rem;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .close-btn:hover {
+      background-color: #005bb5;
+    }
   </style>
   <script src="https://www.paypal.com/sdk/js?client-id=ARmFJUNL-2grFv62pdVgTgbaulkPP-lj2_3yEpzjdtz6RWt-h7ISTHqKTolA715eeR-74mIyu-MNE6Mp&vault=true"></script>
 </head>
@@ -633,43 +671,3 @@
   });
 </script>
 </body>
-</html>
-
-    /* Modal window styling */
-    .modal {
-      background-color: #ffffff;
-      border-radius: 12px;
-      padding: 2rem;
-      max-width: 400px;
-      width: 90%;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-    .modal h3 {
-      margin-bottom: 1rem;
-      color: #1c1c1e;
-    }
-    .modal p, .modal a, .modal strong {
-      color: #1c1c1e;
-    }
-    .modal a#download-link {
-      display: inline-block;
-      margin-top: 0.5rem;
-      color: #007aff;
-      text-decoration: none;
-    }
-    .modal a#download-link:hover {
-      text-decoration: underline;
-    }
-    .close-btn {
-      margin-top: 1.5rem;
-      background-color: #007aff;
-      color: #ffffff;
-      border: none;
-      border-radius: 6px;
-      padding: 0.75rem 1.5rem;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-    .close-btn:hover {
-      background-color: #005bb5;
-    }
