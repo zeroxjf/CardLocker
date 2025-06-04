@@ -237,66 +237,28 @@ export default async function handler(req, res) {
     if (eventType === 'BILLING.SUBSCRIPTION.ACTIVATED') {
       // Debug: Log the entire resource to see structure
       console.log('🔍 BILLING.SUBSCRIPTION.ACTIVATED resource structure:', JSON.stringify(resource, null, 2));
-      
+
       const subscriptionId = resource.id;
       const purchaseType = 'subscription';
-      
+
       if (!subscriptionId) {
         console.error('❌ No subscription ID found in BILLING.SUBSCRIPTION.ACTIVATED webhook');
         return res.status(400).json({ error: 'Missing subscription ID in webhook resource' });
       }
-      
-      try {
-        // Get access token and fetch full subscription details
-        const accessToken = await getPayPalAccessToken();
-        const subscriptionDetails = await getSubscriptionDetails(subscriptionId, accessToken);
-        
-        console.log('🔍 Full subscription details:', JSON.stringify(subscriptionDetails, null, 2));
-        
-        // Try to extract email from full subscription details
-        const payerEmail = 
-          subscriptionDetails.subscriber?.email_address ||
-          subscriptionDetails.subscriber?.payer_info?.email ||
-          subscriptionDetails.application_context?.customer?.email_address ||
-          subscriptionDetails.payer?.email_address;
-        
-        if (!payerEmail) {
-          console.error('❌ No subscriber email found in full subscription details');
-          console.error('Available paths in full details:', {
-            'subscriber': !!subscriptionDetails.subscriber,
-            'subscriber.email_address': !!subscriptionDetails.subscriber?.email_address,
-            'subscriber.payer_info': !!subscriptionDetails.subscriber?.payer_info,
-            'application_context': !!subscriptionDetails.application_context,
-            'payer': !!subscriptionDetails.payer
-          });
-          
-          // Fallback: Store with payer_id and manual resolution needed
-          const payerId = resource.subscriber?.payer_id;
-          if (payerId) {
-            console.warn('⚠️ Storing subscription with payer_id for manual resolution:', payerId);
-            await createLicenseWithPayerId(payerId, purchaseType, subscriptionId, res);
-            return;
-          } else {
-            return res.status(400).json({ error: 'Unable to identify subscriber - no email or payer_id found' });
-          }
-        }
-        
-        await createLicenseAndRespond(payerEmail, purchaseType, subscriptionId, res);
-        return;
-        
-      } catch (apiErr) {
-        console.error('❌ Error fetching subscription details:', apiErr);
-        
-        // Fallback: Store with payer_id for manual resolution
-        const payerId = resource.subscriber?.payer_id;
-        if (payerId) {
-          console.warn('⚠️ API call failed, storing subscription with payer_id for manual resolution:', payerId);
-          await createLicenseWithPayerId(payerId, purchaseType, subscriptionId, res);
-          return;
-        } else {
-          return res.status(500).json({ error: 'Failed to get subscription details and no payer_id available' });
-        }
+
+      // Look up mapped email from pendingSubscriptions
+      const mappingDoc = await db.collection('pendingSubscriptions').doc(subscriptionId).get();
+      let payerEmail = mappingDoc.exists ? mappingDoc.data().email : null;
+      if (!payerEmail) {
+        console.error('❌ No stored email for subscriptionId:', subscriptionId);
+        return res.status(400).json({ error: 'No email mapping for subscription' });
       }
+
+      // Optionally delete the pendingSubscriptions doc
+      await db.collection('pendingSubscriptions').doc(subscriptionId).delete();
+
+      await createLicenseAndRespond(payerEmail, purchaseType, subscriptionId, res);
+      return;
     }
 
     // 4c) Other events: ignore
