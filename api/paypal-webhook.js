@@ -55,40 +55,39 @@ export default async function handler(req, res) {
   const webhookId = process.env.PAYPAL_WEBHOOK_ID;
   const webhookEvent = req.body;
 
-  // Skip verification for test requests (when headers are missing)
-  const isTestRequest = !transmissionId || !transmissionTime || !certUrl || !authAlgo || !actualSignature;
-  
-  if (!isTestRequest) {
-    // 3b) Build verification request
-    const verifyRequest = {
-      auth_algo: authAlgo,
-      cert_url: certUrl,
-      transmission_id: transmissionId,
-      transmission_sig: actualSignature,
-      transmission_time: transmissionTime,
-      webhook_id: webhookId,
-      webhook_event: webhookEvent,
-    };
+  // 3b) Verify all required headers are present
+  if (!transmissionId || !transmissionTime || !certUrl || !authAlgo || !actualSignature || !webhookId) {
+    console.error('❌ Missing required PayPal webhook headers');
+    return res.status(400).json({ error: 'Missing required PayPal webhook headers' });
+  }
 
-    // 3c) Perform signature verification
-    try {
-      const request = new checkoutNodeJssdk.notifications.VerifyWebhookSignatureRequest();
-      request.requestBody(verifyRequest);
+  // 3c) Build verification request
+  const verifyRequest = {
+    auth_algo: authAlgo,
+    cert_url: certUrl,
+    transmission_id: transmissionId,
+    transmission_sig: actualSignature,
+    transmission_time: transmissionTime,
+    webhook_id: webhookId,
+    webhook_event: webhookEvent,
+  };
 
-      const response = await paypalClient.execute(request);
-      const verificationStatus = response.result.verification_status;
-      console.log('🔍 PayPal Webhook verification status:', verificationStatus);
+  // 3d) Perform signature verification
+  try {
+    const request = new checkoutNodeJssdk.notifications.VerifyWebhookSignatureRequest();
+    request.requestBody(verifyRequest);
 
-      if (verificationStatus !== 'SUCCESS') {
-        console.error('❌ Invalid PayPal webhook signature');
-        return res.status(400).json({ error: 'Webhook signature verification failed' });
-      }
-    } catch (verifyErr) {
-      console.error('❌ Error verifying PayPal webhook signature:', verifyErr);
-      return res.status(500).json({ error: 'Error verifying webhook signature', details: verifyErr.message });
+    const response = await paypalClient.execute(request);
+    const verificationStatus = response.result.verification_status;
+    console.log('🔍 PayPal Webhook verification status:', verificationStatus);
+
+    if (verificationStatus !== 'SUCCESS') {
+      console.error('❌ Invalid PayPal webhook signature');
+      return res.status(400).json({ error: 'Webhook signature verification failed' });
     }
-  } else {
-    console.log('⚠️ Skipping webhook verification for test request');
+  } catch (verifyErr) {
+    console.error('❌ Error verifying PayPal webhook signature:', verifyErr);
+    return res.status(500).json({ error: 'Error verifying webhook signature', details: verifyErr.message });
   }
 
   // 4) Handle only the events we care about:
