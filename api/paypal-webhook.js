@@ -40,10 +40,46 @@ let db;
   }
 })();
 
+// Helper to get raw body
+function getRawBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', chunk => {
+      data += chunk;
+    });
+    req.on('end', () => {
+      resolve(data);
+    });
+    req.on('error', err => {
+      reject(err);
+    });
+  });
+}
+
 // 3) Main webhook handler
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).send('Method not allowed');
+  }
+
+  // Get raw body for verification (critical for PayPal verification)
+  let rawBody;
+  let webhookEvent;
+  
+  try {
+    // If req.body is already parsed, we need to get the raw body differently
+    if (req.body && typeof req.body === 'object') {
+      // Body is already parsed by Vercel - convert back to string
+      rawBody = JSON.stringify(req.body);
+      webhookEvent = req.body;
+    } else {
+      // Get raw body
+      rawBody = await getRawBody(req);
+      webhookEvent = JSON.parse(rawBody);
+    }
+  } catch (err) {
+    console.error('❌ Error parsing webhook body:', err);
+    return res.status(400).json({ error: 'Invalid JSON body' });
   }
 
   // 3a) Gather PayPal headers
@@ -53,7 +89,6 @@ export default async function handler(req, res) {
   const authAlgo = req.headers['paypal-auth-algo'];
   const actualSignature = req.headers['paypal-transmission-sig'];
   const webhookId = process.env.PAYPAL_WEBHOOK_ID;
-  const webhookEvent = req.body;
 
   // Debug: Log all headers to identify what's missing
   console.log('📋 Webhook Headers Debug:');
@@ -81,7 +116,7 @@ export default async function handler(req, res) {
     });
   }
 
-  // 3c) Build verification request
+  // 3c) Build verification request - use RAW BODY as webhook_event
   const verifyRequest = {
     auth_algo: authAlgo,
     cert_url: certUrl,
@@ -89,7 +124,7 @@ export default async function handler(req, res) {
     transmission_sig: actualSignature,
     transmission_time: transmissionTime,
     webhook_id: webhookId,
-    webhook_event: webhookEvent,
+    webhook_event: JSON.parse(rawBody) // Use parsed version of raw body
   };
 
   // 3d) Perform signature verification using direct API call
@@ -124,7 +159,8 @@ export default async function handler(req, res) {
     });
 
     if (!verifyResponse.ok) {
-      throw new Error(`Verification failed: ${verifyResponse.status}`);
+      const errorText = await verifyResponse.text();
+      throw new Error(`Verification failed: ${verifyResponse.status} - ${errorText}`);
     }
 
     const verifyData = await verifyResponse.json();
@@ -133,6 +169,7 @@ export default async function handler(req, res) {
 
     if (verificationStatus !== 'SUCCESS') {
       console.error('❌ Invalid PayPal webhook signature');
+      console.error('Verification response:', verifyData);
       return res.status(400).json({ error: 'Webhook signature verification failed' });
     }
   } catch (verifyErr) {
