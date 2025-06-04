@@ -603,7 +603,7 @@
           onApprove: async function (data) {
             // Directly create a license for the subscriber without waiting for webhook
             try {
-              const resp = await fetch('https://cardlocker.net/api/create-license', {
+              const resp = await fetch('https://www.cardlocker.net/api/create-license', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -673,7 +673,7 @@
             const intervalId = setInterval(async () => {
               attempts++;
               try {
-                const resp = await fetch(`https://cardlocker.net/api/check-license?email=${encodeURIComponent(email)}`);
+                const resp = await fetch(`https://www.cardlocker.net/api/check-license?email=${encodeURIComponent(email)}`);
                 if (!resp.ok) throw new Error('Server error ' + resp.status);
                 const { found, licenseKey, signedUrl } = await resp.json();
 
