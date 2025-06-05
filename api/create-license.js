@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     const { email, purchaseType, paypalID, resourceId } = req.body;
 
     // 1) Basic field validation
-    if (!email || !purchaseType || !paypalID) {
+    if (!email || !purchaseType || (purchaseType === 'subscription' && !resourceId) || (purchaseType !== 'subscription' && !paypalID)) {
       return res.status(400).json({ error: 'Missing fields' });
     }
 
