@@ -605,16 +605,26 @@
             });
           },
           onApprove: async function (data) {
-            // Directly create a license for the subscriber without waiting for webhook
+            // Construct payload according to purchase type
+            const buyerEmail = email;
+            const purchaseType = 'subscription';
+            const subscriptionID = data.subscriptionID;
+            const licensePayload = {
+              email: buyerEmail,
+              purchaseType: purchaseType
+            };
+            if (purchaseType === 'subscription') {
+              licensePayload.resourceId = subscriptionID; // must use resourceId for subscriptions
+            } else {
+              licensePayload.paypalID = data.orderID || data.subscriptionID;
+            }
             try {
-              const resp = await fetch('https://www.cardlocker.net/api/create-license', {
+              const resp = await fetch('/api/create-license', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  email: email,
-                  purchaseType: 'subscription',
-                  paypalID: data.orderID || data.subscriptionID
-                })
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(licensePayload)
               });
               if (!resp.ok) throw new Error('Server error ' + resp.status);
               const { licenseKey, signedUrl } = await resp.json();
@@ -665,34 +675,61 @@
             });
           },
           onApprove(data, actions) {
+            // Construct payload according to purchase type
+            const buyerEmail = email;
+            const purchaseType = 'one-time';
+            const captureID = data.orderID;
+            const licensePayload = {
+              email: buyerEmail,
+              purchaseType: purchaseType
+            };
+            if (purchaseType === 'subscription') {
+              licensePayload.resourceId = data.subscriptionID;
+            } else {
+              licensePayload.paypalID = captureID; // use paypalID for one-time purchases
+            }
             // Show "Thank You" modal with placeholder
             showThankYouModal(email, 'Generating license…');
 
-            // Poll every 2 seconds to check if Firestore has the license
-            let attempts = 0;
-            const maxAttempts = 15; // 15 × 2s = 30 seconds
-            const intervalId = setInterval(async () => {
-              attempts++;
-              try {
-                const resp = await fetch(`https://www.cardlocker.net/api/check-license?email=${encodeURIComponent(email)}`);
-                if (!resp.ok) throw new Error('Server error ' + resp.status);
-                const { found, licenseKey, signedUrl } = await resp.json();
-
-                if (found) {
+            // Call create-license endpoint directly
+            fetch('/api/create-license', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(licensePayload)
+            })
+            .then(async resp => {
+              if (!resp.ok) throw new Error('Server error ' + resp.status);
+              const { licenseKey, signedUrl } = await resp.json();
+              // Update modal with actual license key
+              document.getElementById('customer-license').textContent = licenseKey;
+            })
+            .catch(err => {
+              console.error('Error creating license:', err);
+              // Fallback: Poll every 2 seconds to check if Firestore has the license
+              let attempts = 0;
+              const maxAttempts = 15; // 15 × 2s = 30 seconds
+              const intervalId = setInterval(async () => {
+                attempts++;
+                try {
+                  const resp = await fetch(`/api/check-license?email=${encodeURIComponent(email)}`);
+                  if (!resp.ok) throw new Error('Server error ' + resp.status);
+                  const { found, licenseKey, signedUrl } = await resp.json();
+                  if (found) {
+                    clearInterval(intervalId);
+                    document.getElementById('customer-license').textContent = licenseKey;
+                  } else if (attempts >= maxAttempts) {
+                    clearInterval(intervalId);
+                    alert('License issuance is taking longer than expected. Please contact support.');
+                  }
+                } catch (err) {
+                  console.error('Error checking license:', err);
                   clearInterval(intervalId);
-                  // Update modal with actual license key
-                  document.getElementById('customer-license').textContent = licenseKey;
-                  // No redirect; user can use the static download link in the modal
-                } else if (attempts >= maxAttempts) {
-                  clearInterval(intervalId);
-                  alert('License issuance is taking longer than expected. Please contact support.');
+                  alert('Could not verify license. Please contact support.');
                 }
-              } catch (err) {
-                console.error('Error checking license:', err);
-                clearInterval(intervalId);
-                alert('Could not verify license. Please contact support.');
-              }
-            }, 2000);
+              }, 2000);
+            });
           },
           onError(err) {
             console.error('PayPal one-time purchase error:', err);
