@@ -764,7 +764,15 @@
     try {
       // Query the license by PayPal ID
       const resp = await fetch('https://www.cardlocker.net/api/check-license?paypalId=' + encodeURIComponent(paypalId));
-      const data = await resp.json();
+      let data;
+      try {
+        data = await resp.json();
+      } catch (jsonErr) {
+        const rawText = await resp.text();
+        console.error('❌ Failed to parse JSON. Raw response:', rawText);
+        alert('Server error — could not retrieve license. Check console for details.');
+        return;
+      }
       if (data && data.found && data.licenseKey) {
         // Show modal with the license key
         document.getElementById('customer-license').textContent = data.licenseKey;
