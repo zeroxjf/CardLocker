@@ -10,12 +10,12 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 export default async function handler(req, res) {
-  const { email } = req.query;
-  if (!email) {
-    return res.status(400).json({ error: 'Missing email parameter' });
+  const { paypalId } = req.query;
+  if (!paypalId) {
+    return res.status(400).json({ error: 'Missing paypalId parameter' });
   }
   try {
-    const snapshot = await db.collection('licenses').where('email', '==', email).get();
+    const snapshot = await db.collection('licenses').where('paypalID', '==', paypalId).get();
     if (snapshot.empty) {
       return res.status(200).json({ found: false });
     }
