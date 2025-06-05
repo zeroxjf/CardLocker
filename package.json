@@ -21,6 +21,7 @@
   "dependencies": {
     "@paypal/checkout-server-sdk": "^1.0.3",
     "@vercel/blob": "^1.1.1",
+    "@vercel/edge-config": "^1.4.0",
     "firebase-admin": "^13.4.0"
   }
 }
