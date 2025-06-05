@@ -4,8 +4,14 @@ import admin from 'firebase-admin';
 
 // Initialize Admin if needed (similar to purchase.js)
 if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    console.log('✅ Firebase Admin initialized.');
+  } catch (e) {
+    console.error('❌ Firebase Admin failed to initialize:', e);
+    return res.status(500).json({ error: 'Failed to initialize Firebase Admin', details: e.message });
+  }
 }
 const db = admin.firestore();
 
@@ -15,6 +21,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing paypalId parameter' });
   }
   try {
+    console.log('🔍 Querying licenses with paypalID:', paypalId);
     const snapshot = await db.collection('licenses').where('paypalID', '==', paypalId).get();
     if (snapshot.empty) {
       return res.status(200).json({ found: false });
@@ -50,7 +57,7 @@ export default async function handler(req, res) {
       paypalID: paypalID,
     });
   } catch (err) {
-    console.error('check-license.js error:', err);
+    console.error('check-license.js error:', err.stack || err);
     return res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 }
