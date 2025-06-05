@@ -29,11 +29,35 @@ async function getPayPalAccessToken() {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
+  // Confirmation check for GET requests with licenseKey but not confirm=true
+  if (req.method === 'GET' && req.query.licenseKey && req.query.confirm !== 'true') {
+    return res.send(`
+      <html>
+        <body style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 2rem;">
+          <h2>Cancel Your Subscription</h2>
+          <p>This action will permanently cancel your subscription and deactivate your license.</p>
+          <p>If you're sure, click the button below:</p>
+          <p>
+            <a href="/api/merchant-cancel-subscription?licenseKey=${req.query.licenseKey}&confirm=true"
+               style="background: #d00; color: #fff; padding: 0.75rem 1.5rem; text-decoration: none; border-radius: 4px;">
+              Yes, Cancel My Subscription
+            </a>
+          </p>
+        </body>
+      </html>
+    `);
+  }
+
+  // Support both POST (API) and GET (with confirm=true) for cancellation
+  let licenseKey;
+  if (req.method === 'POST') {
+    licenseKey = req.body.licenseKey;
+  } else if (req.method === 'GET' && req.query.licenseKey && req.query.confirm === 'true') {
+    licenseKey = req.query.licenseKey;
+  } else {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { licenseKey } = req.body;
   if (!licenseKey) {
     return res.status(400).json({ error: 'Missing licenseKey' });
   }
@@ -75,6 +99,17 @@ export default async function handler(req, res) {
 
     // 3) Now your webhook (paypal-webhook.js) will mark status: 'inactive' in Firestore.
     // Return success so your frontend can show a “Cancelled” confirmation.
+    // For GET requests, show a simple HTML confirmation
+    if (req.method === 'GET') {
+      return res.send(`
+        <html>
+          <body style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 2rem;">
+            <h2>Subscription Cancelled</h2>
+            <p>Your subscription has been cancelled. Check your email for confirmation.</p>
+          </body>
+        </html>
+      `);
+    }
     return res.status(200).json({ success: true, message: 'Subscription cancelled. Check your email for confirmation.' });
   } catch (err) {
     console.error('❌ Error cancelling subscription:', err);
