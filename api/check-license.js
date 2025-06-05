@@ -1,6 +1,6 @@
 // File: api/check-license.js
 
-import admin from 'firebase-admin';
+const admin = require('firebase-admin');
 
 // Initialize Admin if needed (similar to purchase.js)
 if (!admin.apps.length) {
@@ -10,12 +10,13 @@ if (!admin.apps.length) {
     console.log('✅ Firebase Admin initialized.');
   } catch (e) {
     console.error('❌ Firebase Admin failed to initialize:', e);
-    return res.status(500).json({ error: 'Failed to initialize Firebase Admin', details: e.message });
+    // There is no res in this scope; just throw
+    throw new Error('Failed to initialize Firebase Admin: ' + e.message);
   }
 }
 const db = admin.firestore();
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const { paypalId } = req.query;
   if (!paypalId) {
     return res.status(400).json({ error: 'Missing paypalId parameter' });
@@ -57,7 +58,7 @@ export default async function handler(req, res) {
       'https://qinhuscfvbuurprs.public.blob.vercel-storage.com/cardlocker/' +
       'CardLocker-qNcAFlKgf0ku0HXcgI0DXm3utFmtoZ.dmg';
     // We need @vercel/blob here too:
-    const { getDownloadUrl } = await import('@vercel/blob');
+    const { getDownloadUrl } = require('@vercel/blob');
     const signedUrl = await getDownloadUrl(fullBlobUrl, {
       token: process.env.BLOB_READ_WRITE_TOKEN,
       expiresIn: 60 * 5,
