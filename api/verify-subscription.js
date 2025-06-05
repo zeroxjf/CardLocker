@@ -67,7 +67,8 @@ export default async function handler(req, res) {
   }
 
   // Expect a JSON body like { "subscriptionId": "I-XXXXXXXX", "licenseKey": "ABCDE-12345-…" }
-  const { subscriptionId, licenseKey } = req.body;
+  const { subscriptionId: subscriptionIdFromBody, licenseKey } = req.body;
+  let subscriptionId = subscriptionIdFromBody;
   if (!subscriptionId && !licenseKey) {
     return res
       .status(400)
@@ -83,6 +84,13 @@ export default async function handler(req, res) {
       if (!licenseDoc.exists) {
         return res.status(404).json({ error: 'License not found' });
       }
+      // Pull subscriptionId from the document data
+      const data = licenseDoc.data();
+      const subId = data.subscriptionId;
+      if (!subId) {
+        return res.status(400).json({ error: 'No subscriptionId on this license' });
+      }
+      subscriptionId = subId;
       docRef = licenseDoc.ref;
     } else {
       // If the client passed subscriptionId, find the doc that has that field
@@ -130,8 +138,10 @@ export default async function handler(req, res) {
     }
 
     const subData = await ppResponse.json();
-    // subData.status will be something like "ACTIVE", "SUSPENDED", "CANCELLED", etc.
-    const newStatus = subData.status?.toLowerCase() || 'unknown';
+    // Normalize PayPal status to lowercase
+    const paypalStatus = subData.status?.toLowerCase() || 'unknown';
+    // Only treat "active" as active; everything else is inactive
+    const newStatus = paypalStatus === 'active' ? 'active' : 'inactive';
 
     // ——— 4c) Write the updated status field back into Firestore ———
     await docRef.update({ status: newStatus });
