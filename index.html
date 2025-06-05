@@ -606,36 +606,30 @@
             });
           },
           onApprove: async function (data) {
-            // Construct payload according to purchase type
-            const buyerEmail = email;
-            const purchaseType = 'subscription';
-            const subscriptionID = data.subscriptionID;
-            const licensePayload = {
-              email: buyerEmail,
-              purchaseType: purchaseType
-            };
-            if (purchaseType === 'subscription') {
-              licensePayload.resourceId = subscriptionID; // must use resourceId for subscriptions
-            } else {
-              licensePayload.paypalID = data.orderID || data.subscriptionID;
-            }
-            try {
-              const resp = await fetch('/api/create-license', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(licensePayload)
-              });
-              if (!resp.ok) throw new Error('Server error ' + resp.status);
-              const { licenseKey } = await resp.json();
-              
-              // Show “Thank You” modal with the actual license key
-              showThankYouModal(email, licenseKey);
-            } catch (err) {
-              console.error('Error creating license directly:', err);
-              alert('Subscription succeeded but license creation failed. Please contact support.');
-            }
+            // Show "Thank You" modal with placeholder
+            showThankYouModal(email, 'Generating license…');
+
+            let attempts = 0;
+            const maxAttempts = 15;
+            const paypalId = data.subscriptionID || data.orderID;
+            const interval = setInterval(async () => {
+              attempts++;
+              try {
+                const resp = await fetch(`/api/check-license?paypalId=${encodeURIComponent(paypalId)}`);
+                const { found, licenseKey } = await resp.json();
+                if (found) {
+                  clearInterval(interval);
+                  document.getElementById('customer-license').textContent = licenseKey;
+                } else if (attempts >= maxAttempts) {
+                  clearInterval(interval);
+                  alert('License generation taking longer than expected. Please contact support.');
+                }
+              } catch (err) {
+                clearInterval(interval);
+                console.error('License polling error:', err);
+                alert('Error checking license status. Please contact support.');
+              }
+            }, 2000);
           },
           onError(err) {
             console.error('PayPal subscription error:', err);
@@ -676,61 +670,30 @@
             });
           },
           onApprove(data, actions) {
-            // Construct payload according to purchase type
-            const buyerEmail = email;
-            const purchaseType = 'one-time';
-            const captureID = data.orderID;
-            const licensePayload = {
-              email: buyerEmail,
-              purchaseType: purchaseType
-            };
-            if (purchaseType === 'subscription') {
-              licensePayload.resourceId = data.subscriptionID;
-            } else {
-              licensePayload.paypalID = captureID; // use paypalID for one-time purchases
-            }
             // Show "Thank You" modal with placeholder
             showThankYouModal(email, 'Generating license…');
 
-            // Call create-license endpoint directly
-            fetch('/api/create-license', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(licensePayload)
-            })
-            .then(async resp => {
-              if (!resp.ok) throw new Error('Server error ' + resp.status);
-              const { licenseKey } = await resp.json();
-              // Update modal with actual license key
-              document.getElementById('customer-license').textContent = licenseKey;
-            })
-            .catch(err => {
-              console.error('Error creating license:', err);
-              // Fallback: Poll every 2 seconds to check if Firestore has the license
-              let attempts = 0;
-              const maxAttempts = 15; // 15 × 2s = 30 seconds
-              const intervalId = setInterval(async () => {
-                attempts++;
-                try {
-                  const resp = await fetch(`/api/check-license?email=${encodeURIComponent(email)}`);
-                  if (!resp.ok) throw new Error('Server error ' + resp.status);
-                  const { found, licenseKey } = await resp.json();
-                  if (found) {
-                    clearInterval(intervalId);
-                    document.getElementById('customer-license').textContent = licenseKey;
-                  } else if (attempts >= maxAttempts) {
-                    clearInterval(intervalId);
-                    alert('License issuance is taking longer than expected. Please contact support.');
-                  }
-                } catch (err) {
-                  console.error('Error checking license:', err);
-                  clearInterval(intervalId);
-                  alert('Could not verify license. Please contact support.');
+            let attempts = 0;
+            const maxAttempts = 15;
+            const paypalId = data.subscriptionID || data.orderID;
+            const interval = setInterval(async () => {
+              attempts++;
+              try {
+                const resp = await fetch(`/api/check-license?paypalId=${encodeURIComponent(paypalId)}`);
+                const { found, licenseKey } = await resp.json();
+                if (found) {
+                  clearInterval(interval);
+                  document.getElementById('customer-license').textContent = licenseKey;
+                } else if (attempts >= maxAttempts) {
+                  clearInterval(interval);
+                  alert('License generation taking longer than expected. Please contact support.');
                 }
-              }, 2000);
-            });
+              } catch (err) {
+                clearInterval(interval);
+                console.error('License polling error:', err);
+                alert('Error checking license status. Please contact support.');
+              }
+            }, 2000);
           },
           onError(err) {
             console.error('PayPal one-time purchase error:', err);
@@ -781,6 +744,9 @@
         document.getElementById('modal-message').textContent = 'The license key associated with this transaction ID is:';
         const modal = document.getElementById('thankyou-modal');
         modal.classList.add('show');
+        document.getElementById('close-modal').addEventListener('click', () => {
+          modal.classList.remove('show');
+        });
       } else {
         alert('Could not find a license for that PayPal Transaction ID. Please check your info or contact support.');
       }
