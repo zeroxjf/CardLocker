@@ -26,12 +26,25 @@ export default async function handler(req, res) {
     if (snapshot.empty) {
       return res.status(200).json({ found: false });
     }
-    // If multiple licenses exist, pick the newest one by timestamp
+    // If multiple licenses exist, pick the newest one by timestamp, with logging and guards for bad data
     let newestDoc = null;
     snapshot.forEach(doc => {
       const data = doc.data();
-      if (!newestDoc || data.timestamp.toMillis() > newestDoc.data().timestamp.toMillis()) {
-        newestDoc = doc;
+      if (!data.timestamp || typeof data.timestamp.toMillis !== 'function') {
+        console.warn('⚠️ Skipping document with invalid or missing timestamp:', doc.id);
+        return;
+      }
+      try {
+        if (
+          !newestDoc ||
+          (newestDoc.data().timestamp &&
+           typeof newestDoc.data().timestamp.toMillis === 'function' &&
+           data.timestamp.toMillis() > newestDoc.data().timestamp.toMillis())
+        ) {
+          newestDoc = doc;
+        }
+      } catch (e) {
+        console.warn('⚠️ Failed to compare timestamps for doc:', doc.id, e);
       }
     });
     // Read Firestore data from the newest document
