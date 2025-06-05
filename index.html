@@ -606,20 +606,19 @@
             });
           },
           onApprove: async function (data) {
-            // Capture email from input field
+            // Always retrieve the email from the input field
             const emailInput = document.getElementById('email-subscribe');
             const userEmail = emailInput ? emailInput.value.trim() : email;
-            // Optionally, send to backend for mapping
             const paypalId = data.subscriptionID || data.orderID;
             if (userEmail && paypalId) {
-              // Store a mapping in Firestore so webhook can resolve email
+              // Send email to backend in JSON body for subscription
               fetch('/api/create-license', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   paypalId: paypalId,
                   email: userEmail,
-                  plan: 'subscription'
+                  purchaseType: 'subscription'
                 })
               }).catch(() => {});
             }
@@ -686,20 +685,19 @@
             });
           },
           onApprove(data, actions) {
-            // Capture email from input field
+            // Always retrieve the email from the input field
             const emailInput = document.getElementById('email-lifetime');
             const userEmail = emailInput ? emailInput.value.trim() : email;
-            // Optionally, send to backend for mapping
             const paypalId = data.subscriptionID || data.orderID;
             if (userEmail && paypalId) {
-              // Store a mapping in Firestore so webhook can resolve email
+              // Send email to backend in JSON body for one-time
               fetch('/api/create-license', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   paypalId: paypalId,
                   email: userEmail,
-                  plan: 'lifetime'
+                  purchaseType: 'one-time'
                 })
               }).catch(() => {});
             }

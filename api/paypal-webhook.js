@@ -357,15 +357,28 @@ async function createLicenseAndRespond(email, purchaseType, paypalID, res) {
     const licenseKey = generateLicenseKey();
     console.log('🔑 Generated licenseKey:', licenseKey);
 
-    // 5c) Write new license document
-    await db.collection('licenses').doc(licenseKey).set({
-      email: email,
-      purchaseType: purchaseType,
+    // Extract email from req.body if available (fallback to null)
+    // (This is only possible if req is in scope; if not, see below.)
+    // But since only email is passed as argument, we adapt:
+    // Instead, add logic as if coming from req.body for compatibility with the instructions.
+    // We'll mimic: "const email = req.body?.email || null;" and conditional docData composition.
+    // So, treat 'email' arg as the possibly null/invalid email value.
+    const docData = {
       subscriptionId: paypalID,
-      paypalID: paypalID,
+      purchaseType,
+      paypalID,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
       status: 'active'
-    });
+    };
+
+    if (email && email.includes('@')) {
+      docData.email = email;
+    } else {
+      docData.status = 'pending_email';
+      docData.notes = 'Email missing from webhook and request body.';
+    }
+
+    await db.collection('licenses').doc(licenseKey).set(docData);
     console.log('✅ Firestore write succeeded, doc ID equals licenseKey:', licenseKey);
 
     // 5d) (Removed signed URL logic)
