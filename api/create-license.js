@@ -47,15 +47,6 @@ export default async function handler(req, res) {
     }
     const licenseKey = generateLicenseKey();
 
-    // 5) Build “manageSubscriptionUrl” if this is a subscription purchase
-    let manageSubscriptionUrl = null;
-    if (purchaseType === 'subscription') {
-      const baseUrl =
-        process.env.NODE_ENV === 'production'
-          ? 'https://www.paypal.com/webapps/billing/subscription/manage?ba_id='
-          : 'https://www.sandbox.paypal.com/webapps/billing/subscription/manage?ba_id=';
-      manageSubscriptionUrl = `${baseUrl}${paypalID}`;
-    }
 
     // 6) Construct the Firestore document data exactly as email trigger expects
     const docData = {
@@ -65,8 +56,8 @@ export default async function handler(req, res) {
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
       status: 'active',
     };
-    if (manageSubscriptionUrl) {
-      docData.manageSubscriptionUrl = manageSubscriptionUrl; // (D): optional for subscription
+    if (purchaseType === 'subscription') {
+      docData.subscriptionId = paypalID;
     }
 
     await db.collection('licenses').doc(licenseKey).set(docData);
@@ -79,12 +70,8 @@ export default async function handler(req, res) {
       expiresIn: 60 * 5 // 5 minutes
     });
 
-    // 8) Return payload (include manageSubscriptionUrl if subscription)
-    const responsePayload = { licenseKey, signedUrl };
-    if (manageSubscriptionUrl) {
-      responsePayload.manageSubscriptionUrl = manageSubscriptionUrl;
-    }
-    return res.status(200).json(responsePayload);
+    // 8) Return payload (no manageSubscriptionUrl)
+    return res.status(200).json({ licenseKey, signedUrl });
 
   } catch (err) {
     console.error('❌ Error in /api/create-license:', err);
