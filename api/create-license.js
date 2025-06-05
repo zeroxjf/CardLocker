@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { email, purchaseType, paypalID } = req.body;
+    const { email, purchaseType, paypalID, resourceId } = req.body;
 
     // 1) Basic field validation
     if (!email || !purchaseType || !paypalID) {
@@ -49,16 +49,19 @@ export default async function handler(req, res) {
 
 
     // 6) Construct the Firestore document data exactly as email trigger expects
-    const docData = {
-      email: email,                                  // (A): must match sendPurchaseConfirmation
-      purchaseType: purchaseType,                    // (C): “subscription” or “one-time”
-      paypalID: paypalID,                            // merchant’s PayPal subscription or ID
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      status: 'active',
-    };
-    if (purchaseType === 'subscription') {
-      docData.subscriptionId = paypalID;
-    }
+const docData = {
+  email: email,
+  purchaseType: purchaseType,
+  timestamp: admin.firestore.FieldValue.serverTimestamp(),
+  status: 'active',
+};
+
+if (purchaseType === 'subscription') {
+  docData.subscriptionId = resourceId; // I-... format used by PayPal
+  docData.paypalID = resourceId;
+} else {
+  docData.paypalID = paypalID;
+}
 
     await db.collection('licenses').doc(licenseKey).set(docData);
     console.log('✅ Firestore write succeeded, doc ID =', licenseKey);

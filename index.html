@@ -515,7 +515,11 @@
       </p>
       <p><strong id="customer-license"></strong></p>
       <p>You can download CardLocker for macOS here:</p>
-      <p><a id="download-link" href="#">Download CardLocker</a></p>
+      <p>
+        <a id="download-link" href="https://github.com/johnnycardlocker/CardLocker/releases/latest/download/CardLocker.dmg" target="_blank" rel="noopener">
+          Download CardLocker
+        </a>
+      </p>
       <button class="close-btn" id="close-modal">Close</button>
     </div>
   </div>
@@ -617,9 +621,6 @@
               
               // Show “Thank You” modal with the actual license key
               showThankYouModal(email, licenseKey);
-              
-              // Redirect to the download URL
-              window.location.href = signedUrl;
             } catch (err) {
               console.error('Error creating license directly:', err);
               alert('Subscription succeeded but license creation failed. Please contact support.');
@@ -681,8 +682,7 @@
                   clearInterval(intervalId);
                   // Update modal with actual license key
                   document.getElementById('customer-license').textContent = licenseKey;
-                  // Redirect to download
-                  window.location.href = signedUrl;
+                  // No redirect; user can use the static download link in the modal
                 } else if (attempts >= maxAttempts) {
                   clearInterval(intervalId);
                   alert('License issuance is taking longer than expected. Please contact support.');
