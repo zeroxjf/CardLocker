@@ -313,6 +313,18 @@
     .email-field a:not([disabled]):hover {
       background-color: #28a745;
     }
+    /* Animation for checkmark and confirm button */
+    .checkmark {
+      font-size: 1.2rem;
+      color: green;
+      transition: opacity 0.3s ease-in-out;
+    }
+    .confirm-btn {
+      transition: all 0.3s ease;
+    }
+    .confirm-btn.confirmed {
+      display: none;
+    }
     /* Modal window styling */
     .modal {
       background-color: #ffffff;
@@ -428,11 +440,14 @@
               <p><strong>$0.99/month</strong> – Cancel anytime</p>
               <button class="plan-select" data-plan="subscribe">Select</button>
               <div class="email-field" style="display: none;">
-                <input type="email" id="email-subscribe" name="email-subscribe" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Enter your email" />
-                <button type="button" id="confirm-subscribe" style="padding: 0.5rem; background-color: #007aff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                  Confirm
-                </button>
-                <div id="paypal-button-container-subscribe"></div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <input type="email" id="sub-email" placeholder="Enter your email" required>
+                  <button id="confirm-sub-email" class="confirm-btn">Confirm</button>
+                  <span id="check-sub-email" class="checkmark" style="display: none;">✔️</span>
+                </div>
+                <div id="paypal-sub-buttons" style="display: none;">
+                  <div id="paypal-button-container-subscribe"></div>
+                </div>
               </div>
             </div>
             <div class="plan">
@@ -441,11 +456,14 @@
               <p><strong>$14.99</strong> – One-time payment</p>
               <button class="plan-select" data-plan="lifetime">Select</button>
               <div class="email-field" style="display: none;">
-                <input type="email" id="email-lifetime" name="email-lifetime" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Enter your email" />
-                <button type="button" id="confirm-lifetime" style="padding: 0.5rem; background-color: #007aff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                  Confirm
-                </button>
-                <div id="paypal-container-8D52BLYAL3DF2"></div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <input type="email" id="one-email" placeholder="Enter your email" required>
+                  <button id="confirm-one-email" class="confirm-btn">Confirm</button>
+                  <span id="check-one-email" class="checkmark" style="display: none;">✔️</span>
+                </div>
+                <div id="paypal-one-buttons" style="display: none;">
+                  <div id="paypal-container-8D52BLYAL3DF2"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -559,48 +577,43 @@
         document.querySelectorAll('.email-field').forEach(field => {
           field.style.display = 'none';
         });
-
         // Show the email field next to this button
         const planDiv = btn.closest('.plan');
         const emailField = planDiv.querySelector('.email-field');
         emailField.style.display = 'flex';
-
         // Focus the email input
-        const input = emailField.querySelector('input');
+        const input = planDiv.dataset.plan === 'subscribe'
+          ? emailField.querySelector('#sub-email')
+          : emailField.querySelector('#one-email');
         input.focus();
-
-        // Listen for input changes to validate email
-        input.addEventListener('input', () => {
-          if (isValidEmail(input.value.trim())) {
-            if (btn.dataset.plan === 'subscribe') {
-              renderSubscriptionButton(input.value.trim());
-            } else if (btn.dataset.plan === 'lifetime') {
-              renderLifetimeButton(input.value.trim());
-            }
-          }
-        });
       });
     });
 
-    // Render PayPal buttons when purchase button is clicked
-    const subContainer = document.getElementById('paypal-button-container-subscribe');
-    const lifeContainer = document.getElementById('paypal-container-8D52BLYAL3DF2');
-
-    // Render subscription button with guest checkout enabled
-    function renderSubscriptionButton(email) {
+    // Subscription Confirm button logic
+    document.getElementById("confirm-sub-email").onclick = function () {
+      const email = document.getElementById("sub-email").value;
+      if (!email || !email.includes("@")) {
+        alert("Please enter a valid email.");
+        return;
+      }
+      document.getElementById("confirm-sub-email").classList.add("confirmed");
+      document.getElementById("check-sub-email").style.display = "inline";
+      document.getElementById("paypal-sub-buttons").style.display = "block";
+      // Render PayPal button if not already rendered
+      const subContainer = document.getElementById('paypal-button-container-subscribe');
       if (!subContainer.hasChildNodes()) {
         paypalSub.Buttons({
-          style: { 
-            shape: 'rect', 
-            color: 'blue', 
-            layout: 'vertical', 
-            label: 'subscribe' 
+          style: {
+            shape: 'rect',
+            color: 'blue',
+            layout: 'vertical',
+            label: 'subscribe'
           },
           createSubscription(data, actions) {
             return actions.subscription.create({
               plan_id: 'P-0UR33161F2240691LNA7RJ4A',
-              subscriber: { 
-                email_address: email 
+              subscriber: {
+                email_address: email
               },
               application_context: {
                 brand_name: 'CardLocker',
@@ -615,19 +628,18 @@
           },
           onApprove: async function (data) {
             // Always retrieve the email from the input field
-            const email = document.getElementById('email-subscribe')?.value || '';
+            const subEmail = document.getElementById('sub-email')?.value || '';
             // Send email to backend in JSON body for subscription
             fetch('/api/paypal-webhook', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 subscriptionId: data.subscriptionID,
-                email: email
+                email: subEmail
               })
             });
             // Show "Thank You" modal with placeholder
-            showThankYouModal(email, 'Generating license…');
-
+            showThankYouModal(subEmail, 'Generating license…');
             let attempts = 0;
             const maxAttempts = 15;
             const interval = setInterval(async () => {
@@ -655,17 +667,27 @@
           }
         }).render('#paypal-button-container-subscribe');
       }
-    }
+    };
 
-    // Render lifetime button with guest checkout enabled
-    function renderLifetimeButton(email) {
+    // Lifetime Confirm button logic
+    document.getElementById("confirm-one-email").onclick = function () {
+      const email = document.getElementById("one-email").value;
+      if (!email || !email.includes("@")) {
+        alert("Please enter a valid email.");
+        return;
+      }
+      document.getElementById("confirm-one-email").classList.add("confirmed");
+      document.getElementById("check-one-email").style.display = "inline";
+      document.getElementById("paypal-one-buttons").style.display = "block";
+      // Render PayPal button if not already rendered
+      const lifeContainer = document.getElementById('paypal-container-8D52BLYAL3DF2');
       if (!lifeContainer.hasChildNodes()) {
         paypalBuy.Buttons({
-          style: { 
-            shape: 'rect', 
-            color: 'gold', 
-            layout: 'vertical', 
-            label: 'buynow' 
+          style: {
+            shape: 'rect',
+            color: 'gold',
+            layout: 'vertical',
+            label: 'buynow'
           },
           createOrder(data, actions) {
             return actions.order.create({
@@ -689,7 +711,7 @@
           },
           onApprove(data, actions) {
             // Always retrieve the email from the input field
-            const emailInput = document.getElementById('email-lifetime');
+            const emailInput = document.getElementById('one-email');
             const userEmail = emailInput ? emailInput.value.trim() : email;
             const paypalId = data.subscriptionID || data.orderID;
             if (userEmail && paypalId) {
@@ -704,7 +726,7 @@
                 })
               }).catch(() => {});
             }
-            // NEW: Always send email to /api/paypal-webhook for manual trigger
+            // Always send email to /api/paypal-webhook for manual trigger
             if (userEmail && paypalId) {
               fetch('/api/paypal-webhook', {
                 method: 'POST',
@@ -720,7 +742,6 @@
             }
             // Show "Thank You" modal with placeholder
             showThankYouModal(userEmail, 'Generating license…');
-
             let attempts = 0;
             const maxAttempts = 15;
             const interval = setInterval(async () => {
@@ -748,17 +769,7 @@
           }
         }).render('#paypal-container-8D52BLYAL3DF2');
       }
-    }
-
-    // Lifetime plan email input validation
-    const emailInputLife = document.getElementById('email-lifetime');
-    if (emailInputLife) {
-      emailInputLife.addEventListener('input', () => {
-        if (isValidEmail(emailInputLife.value.trim())) {
-          renderLifetimeButton(emailInputLife.value.trim());
-        }
-      });
-    }
+    };
   });
 </script>
 <script>
