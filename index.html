@@ -364,14 +364,16 @@
       background-color: #005bb5;
     }
   </style>
-<!-- PayPal SDK loader (obfuscated client-id) -->
-<script src="/paypal-subscribe.js"></script>
-    /* Email field unconfirmed warning style */
-    .unconfirmed-warning {
-      border: 2px solid #ff9800 !important;
-      background-color: #fffbe6 !important;
-      transition: border 0.2s, background 0.2s;
-    }
+<!-- PayPal SDK for one-time payments (guest checkout) -->
+<script
+  src="https://www.paypal.com/sdk/js?client-id=ARmFJUNL-2grFv62pdVgTgbaulkPP-lj2_3yEpzjdtz6RWt-h7ISTHqKTolA715eeR-74mIyu-MNE6Mp&vault=false&disable-funding=credit,card"
+  data-namespace="paypalBuy"
+></script>
+<!-- PayPal SDK for subscriptions (with guest checkout enabled, PayPal Credit disabled) -->
+<script
+  src="https://www.paypal.com/sdk/js?client-id=ARmFJUNL-2grFv62pdVgTgbaulkPP-lj2_3yEpzjdtz6RWt-h7ISTHqKTolA715eeR-74mIyu-MNE6Mp&vault=true&intent=subscription&disable-funding=credit"
+  data-namespace="paypalSub"
+></script>
 </head>
 <body>
   <!-- Firebase SDKs -->
@@ -587,245 +589,194 @@
       });
     });
 
-    // 1. 🛡️ Email validation helpers for all user input
-    function isValidEmail(email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      return emailRegex.test(email);
-    }
-
-    // 4. 📧 Email field persistence and confirmation warning for all relevant fields
-    function addUnconfirmedWarning(input, confirmedFlag) {
-      input.addEventListener("blur", () => {
-        if (!confirmedFlag.value && input.value.trim() !== "") {
-          input.classList.add("unconfirmed-warning");
-        }
-      });
-      input.addEventListener("focus", () => {
-        input.classList.remove("unconfirmed-warning");
-      });
-    }
-
-    // Subscription Confirm button logic with input validation & warning
-    const subEmailInput = document.getElementById("sub-email");
-    const confirmSubEmailBtn = document.getElementById("confirm-sub-email");
-    let subConfirmed = { value: false };
-    if (subEmailInput && confirmSubEmailBtn) {
-      addUnconfirmedWarning(subEmailInput, subConfirmed);
-      confirmSubEmailBtn.addEventListener("click", () => {
-        const email = subEmailInput.value.trim();
-        if (!isValidEmail(email)) {
-          alert("Please enter a valid email address.");
-          return;
-        }
-        subConfirmed.value = true;
-        confirmSubEmailBtn.classList.add("confirmed");
-        document.getElementById("check-sub-email").style.display = "inline";
-        document.getElementById("paypal-sub-buttons").style.display = "block";
-        // Render PayPal button if not already rendered
-        const subContainer = document.getElementById('paypal-button-container-subscribe');
-        if (!subContainer.hasChildNodes() && window.paypalSub) {
-          paypalSub.Buttons({
-            style: {
-              shape: 'rect',
-              color: 'blue',
-              layout: 'vertical',
-              label: 'subscribe'
-            },
-            createSubscription(data, actions) {
-              return actions.subscription.create({
-                plan_id: 'P-0UR33161F2240691LNA7RJ4A',
-                subscriber: {
-                  email_address: email
+    // Subscription Confirm button logic
+    document.getElementById("confirm-sub-email").onclick = function () {
+      const email = document.getElementById("sub-email").value;
+      if (!email || !email.includes("@")) {
+        alert("Please enter a valid email.");
+        return;
+      }
+      document.getElementById("confirm-sub-email").classList.add("confirmed");
+      document.getElementById("check-sub-email").style.display = "inline";
+      document.getElementById("paypal-sub-buttons").style.display = "block";
+      // Render PayPal button if not already rendered
+      const subContainer = document.getElementById('paypal-button-container-subscribe');
+      if (!subContainer.hasChildNodes()) {
+        paypalSub.Buttons({
+          style: {
+            shape: 'rect',
+            color: 'blue',
+            layout: 'vertical',
+            label: 'subscribe'
+          },
+          createSubscription(data, actions) {
+            return actions.subscription.create({
+              plan_id: 'P-0UR33161F2240691LNA7RJ4A',
+              subscriber: {
+                email_address: email
+              },
+              application_context: {
+                brand_name: 'CardLocker',
+                landing_page: 'BILLING',
+                user_action: 'SUBSCRIBE_NOW',
+                payment_method: {
+                  payee_preferred: 'UNRESTRICTED'
                 },
-                application_context: {
-                  brand_name: 'CardLocker',
-                  landing_page: 'BILLING',
-                  user_action: 'SUBSCRIBE_NOW',
-                  payment_method: {
-                    payee_preferred: 'UNRESTRICTED'
-                  },
-                  shipping_preference: 'NO_SHIPPING'
+                shipping_preference: 'NO_SHIPPING'
+              }
+            });
+          },
+          onApprove: async function (data) {
+            // Always retrieve the email from the input field
+            const subEmail = document.getElementById('sub-email')?.value || '';
+            // Send email to backend in JSON body for subscription
+            fetch('/api/paypal-webhook', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                subscriptionId: data.subscriptionID,
+                email: subEmail
+              })
+            });
+            // Show "Thank You" modal with placeholder
+            showThankYouModal(subEmail, 'Generating license…');
+            let attempts = 0;
+            const maxAttempts = 15;
+            const interval = setInterval(async () => {
+              attempts++;
+              try {
+                const resp = await fetch(`/api/check-license?paypalId=${encodeURIComponent(data.subscriptionID)}`);
+                const { found, licenseKey } = await resp.json();
+                if (found) {
+                  clearInterval(interval);
+                  document.getElementById('customer-license').textContent = licenseKey;
+                } else if (attempts >= maxAttempts) {
+                  clearInterval(interval);
+                  alert('License generation taking longer than expected. Please contact support.');
                 }
-              });
-            },
-            onApprove: async function (data) {
-              // Always retrieve the email from the input field
-              const subEmail = subEmailInput?.value.trim() || '';
-              // Send email to backend in JSON body for subscription
-              fetch('/api/paypal-webhook', {
+              } catch (err) {
+                clearInterval(interval);
+                console.error('License polling error:', err);
+                alert('Error checking license status. Please contact support.');
+              }
+            }, 2000);
+          },
+          onError(err) {
+            console.error('PayPal subscription error:', err);
+            alert('Subscription failed. Please try again.');
+          }
+        }).render('#paypal-button-container-subscribe');
+      }
+    };
+
+    // Lifetime Confirm button logic
+    document.getElementById("confirm-one-email").onclick = function () {
+      const email = document.getElementById("one-email").value;
+      if (!email || !email.includes("@")) {
+        alert("Please enter a valid email.");
+        return;
+      }
+      document.getElementById("confirm-one-email").classList.add("confirmed");
+      document.getElementById("check-one-email").style.display = "inline";
+      document.getElementById("paypal-one-buttons").style.display = "block";
+      // Render PayPal button if not already rendered
+      const lifeContainer = document.getElementById('paypal-container-8D52BLYAL3DF2');
+      if (!lifeContainer.hasChildNodes()) {
+        paypalBuy.Buttons({
+          style: {
+            shape: 'rect',
+            color: 'gold',
+            layout: 'vertical',
+            label: 'buynow'
+          },
+          createOrder(data, actions) {
+            return actions.order.create({
+              purchase_units: [{
+                description: 'CardLocker Lifetime License',
+                amount: {
+                  currency_code: 'USD',
+                  value: '20.00'
+                }
+              }],
+              application_context: {
+                brand_name: 'CardLocker',
+                landing_page: 'BILLING',
+                user_action: 'PAY_NOW',
+                payment_method: {
+                  payee_preferred: 'UNRESTRICTED'
+                },
+                shipping_preference: 'NO_SHIPPING'
+              }
+            });
+          },
+          onApprove(data, actions) {
+            // Always retrieve the email from the input field
+            const emailInput = document.getElementById('one-email');
+            const userEmail = emailInput ? emailInput.value.trim() : email;
+            const paypalId = data.subscriptionID || data.orderID;
+            if (userEmail && paypalId) {
+              // Send email to backend in JSON body for one-time
+              fetch('/api/create-license', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  subscriptionId: data.subscriptionID,
-                  email: subEmail
+                  paypalId: paypalId,
+                  email: userEmail,
+                  purchaseType: 'one-time'
                 })
-              });
-              // Show "Thank You" modal with placeholder
-              showThankYouModal(subEmail, 'Generating license…');
-              let attempts = 0;
-              const maxAttempts = 15;
-              const interval = setInterval(async () => {
-                attempts++;
-                try {
-                  const resp = await fetch(`/api/check-license?paypalId=${encodeURIComponent(data.subscriptionID)}`);
-                  const { found, licenseKey } = await resp.json();
-                  if (found) {
-                    clearInterval(interval);
-                    document.getElementById('customer-license').textContent = licenseKey;
-                  } else if (attempts >= maxAttempts) {
-                    clearInterval(interval);
-                    alert('License generation taking longer than expected. Please contact support.');
-                  }
-                } catch (err) {
-                  clearInterval(interval);
-                  console.error('License polling error:', err);
-                  alert('Error checking license status. Please contact support.');
-                }
-              }, 2000);
-            },
-            onError(err) {
-              console.error('PayPal subscription error:', err);
-              alert('Subscription failed. Please try again.');
+              }).catch(() => {});
             }
-          }).render('#paypal-button-container-subscribe');
-        }
-      });
-    }
-
-    // Lifetime Confirm button logic with input validation & warning
-    const oneEmailInput = document.getElementById("one-email");
-    const confirmOneEmailBtn = document.getElementById("confirm-one-email");
-    let oneConfirmed = { value: false };
-    if (oneEmailInput && confirmOneEmailBtn) {
-      addUnconfirmedWarning(oneEmailInput, oneConfirmed);
-      confirmOneEmailBtn.addEventListener("click", () => {
-        const email = oneEmailInput.value.trim();
-        if (!isValidEmail(email)) {
-          alert("Please enter a valid email address.");
-          return;
-        }
-        oneConfirmed.value = true;
-        confirmOneEmailBtn.classList.add("confirmed");
-        document.getElementById("check-one-email").style.display = "inline";
-        document.getElementById("paypal-one-buttons").style.display = "block";
-        // Render PayPal button if not already rendered
-        const lifeContainer = document.getElementById('paypal-container-8D52BLYAL3DF2');
-        if (!lifeContainer.hasChildNodes() && window.paypalBuy) {
-          paypalBuy.Buttons({
-            style: {
-              shape: 'rect',
-              color: 'gold',
-              layout: 'vertical',
-              label: 'buynow'
-            },
-            createOrder(data, actions) {
-              return actions.order.create({
-                purchase_units: [{
-                  description: 'CardLocker Lifetime License',
-                  amount: {
-                    currency_code: 'USD',
-                    value: '20.00'
-                  }
-                }],
-                application_context: {
-                  brand_name: 'CardLocker',
-                  landing_page: 'BILLING',
-                  user_action: 'PAY_NOW',
-                  payment_method: {
-                    payee_preferred: 'UNRESTRICTED'
-                  },
-                  shipping_preference: 'NO_SHIPPING'
-                }
-              });
-            },
-            onApprove(data, actions) {
-              // Always retrieve the email from the input field
-              const userEmail = oneEmailInput ? oneEmailInput.value.trim() : email;
-              const paypalId = data.subscriptionID || data.orderID;
-              if (userEmail && paypalId) {
-                // Send email to backend in JSON body for one-time
-                fetch('/api/create-license', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    paypalId: paypalId,
-                    email: userEmail,
-                    purchaseType: 'one-time'
-                  })
-                }).catch(() => {});
-              }
-              // Always send email to /api/paypal-webhook for manual trigger
-              if (userEmail && paypalId) {
-                fetch('/api/paypal-webhook', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    email: userEmail,
-                    paypalId: paypalId,
-                    eventType: 'manual_trigger'
-                  })
-                }).catch(() => {});
-              }
-              // Show "Thank You" modal with placeholder
-              showThankYouModal(userEmail, 'Generating license…');
-              let attempts = 0;
-              const maxAttempts = 15;
-              const interval = setInterval(async () => {
-                attempts++;
-                try {
-                  const resp = await fetch(`/api/check-license?paypalId=${encodeURIComponent(paypalId)}`);
-                  const { found, licenseKey } = await resp.json();
-                  if (found) {
-                    clearInterval(interval);
-                    document.getElementById('customer-license').textContent = licenseKey;
-                  } else if (attempts >= maxAttempts) {
-                    clearInterval(interval);
-                    alert('License generation taking longer than expected. Please contact support.');
-                  }
-                } catch (err) {
-                  clearInterval(interval);
-                  console.error('License polling error:', err);
-                  alert('Error checking license status. Please contact support.');
-                }
-              }, 2000);
-            },
-            onError(err) {
-              console.error('PayPal one-time purchase error:', err);
-              alert('Purchase failed. Please try again.');
+            // Always send email to /api/paypal-webhook for manual trigger
+            if (userEmail && paypalId) {
+              fetch('/api/paypal-webhook', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  email: userEmail,
+                  paypalId: paypalId,
+                  eventType: 'manual_trigger'
+                })
+              }).catch(() => {});
             }
-          }).render('#paypal-container-8D52BLYAL3DF2');
-        }
-      });
-    }
+            // Show "Thank You" modal with placeholder
+            showThankYouModal(userEmail, 'Generating license…');
+            let attempts = 0;
+            const maxAttempts = 15;
+            const interval = setInterval(async () => {
+              attempts++;
+              try {
+                const resp = await fetch(`/api/check-license?paypalId=${encodeURIComponent(paypalId)}`);
+                const { found, licenseKey } = await resp.json();
+                if (found) {
+                  clearInterval(interval);
+                  document.getElementById('customer-license').textContent = licenseKey;
+                } else if (attempts >= maxAttempts) {
+                  clearInterval(interval);
+                  alert('License generation taking longer than expected. Please contact support.');
+                }
+              } catch (err) {
+                clearInterval(interval);
+                console.error('License polling error:', err);
+                alert('Error checking license status. Please contact support.');
+              }
+            }, 2000);
+          },
+          onError(err) {
+            console.error('PayPal one-time purchase error:', err);
+            alert('Purchase failed. Please try again.');
+          }
+        }).render('#paypal-container-8D52BLYAL3DF2');
+      }
+    };
   });
 </script>
 <script>
   // Confirm email and visually confirm the email with alert
-  // 1. 🛡️ Sanitize and validate user input (email) for Resend License Code
-  const emailInput = document.getElementById('emailInput');
-  const confirmEmailBtn = document.getElementById('confirmEmailBtn');
-  let confirmed = false;
-  if (emailInput && confirmEmailBtn) {
-    // 4. 📧 Add blur/focus warning for unconfirmed email
-    emailInput.addEventListener("blur", () => {
-      if (!confirmed && emailInput.value.trim() !== "") {
-        emailInput.classList.add("unconfirmed-warning");
-      }
-    });
-    emailInput.addEventListener("focus", () => {
-      emailInput.classList.remove("unconfirmed-warning");
-    });
-    // 1. 🛡️ Confirm button logic with input validation
-    confirmEmailBtn.addEventListener("click", async () => {
-      const email = emailInput.value.trim();
-      if (!isValidEmail(email)) {
-        alert("Please enter a valid email address.");
-        return;
-      }
-      confirmed = true;
-      emailInput.classList.remove("unconfirmed-warning");
+  document.getElementById('confirmEmailBtn').addEventListener('click', async () => {
+    const email = document.getElementById('emailInput').value.trim();
+    if (email) {
       alert(`You entered: ${email}\nPlease double-check it before submitting.`);
       // Optionally, you can send the email to your backend to retrieve license here
       // Example: fetch license by email (adapt endpoint as needed)
@@ -858,12 +809,19 @@
         console.error('Error retrieving license:', err);
         alert('Error processing request. Please try again later.');
       }
-    });
-  }
+    }
+  });
 </script>
-<!-- 5. 🕵️ Disable right-click to prevent casual inspection for license logic -->
 <script>
-  document.addEventListener("contextmenu", event => event.preventDefault());
+  document.getElementById('confirm-subscribe')?.addEventListener('click', () => {
+    const email = document.getElementById('email-subscribe').value.trim();
+    if (email) alert(`You entered: ${email}\nPlease confirm it's correct.`);
+  });
+
+  document.getElementById('confirm-lifetime')?.addEventListener('click', () => {
+    const email = document.getElementById('email-lifetime').value.trim();
+    if (email) alert(`You entered: ${email}\nPlease confirm it's correct.`);
+  });
 </script>
 </body>
 </html>
