@@ -78,15 +78,12 @@ export default async function handler(req, res) {
     // ——— 4a) Lookup the Firestore doc if only licenseKey was provided ———
     let docRef;
     if (licenseKey) {
-      const snap = await db
-        .collection('licenses')
-        .where('licenseKey', '==', licenseKey)
-        .limit(1)
-        .get();
-      if (snap.empty) {
+      // Direct lookup by document ID instead of querying a field
+      const licenseDoc = await db.collection('licenses').doc(licenseKey).get();
+      if (!licenseDoc.exists) {
         return res.status(404).json({ error: 'License not found' });
       }
-      docRef = snap.docs[0].ref;
+      docRef = licenseDoc.ref;
     } else {
       // If the client passed subscriptionId, find the doc that has that field
       const snap = await db

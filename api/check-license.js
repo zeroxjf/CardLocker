@@ -19,12 +19,12 @@ export default async function handler(req, res) {
     if (snapshot.empty) {
       return res.status(200).json({ found: false });
     }
-    // If multiple licenses exist, pick the newest one
-    let newest = null;
+    // If multiple licenses exist, pick the newest one by timestamp
+    let newestDoc = null;
     snapshot.forEach(doc => {
       const data = doc.data();
-      if (!newest || data.timestamp.toMillis() > newest.timestamp.toMillis()) {
-        newest = data;
+      if (!newestDoc || data.timestamp.toMillis() > newestDoc.data().timestamp.toMillis()) {
+        newestDoc = doc;
       }
     });
     // Construct fullBlobUrl (matching purchase.js) and generate a fresh signed URL
@@ -39,7 +39,7 @@ export default async function handler(req, res) {
     });
     return res.status(200).json({
       found: true,
-      licenseKey: newest.licenseKey,
+      licenseKey: newestDoc.id,
       signedUrl: signedUrl,
     });
   } catch (err) {

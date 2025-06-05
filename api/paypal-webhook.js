@@ -348,14 +348,13 @@ async function createLicenseAndRespond(email, purchaseType, paypalID, res) {
     console.log('🔑 Generated licenseKey:', licenseKey);
 
     // 5c) Write new license document
-    const newDoc = await db.collection('licenses').add({
+    await db.collection('licenses').doc(licenseKey).set({
       email: email,
-      licenseKey: licenseKey,
       purchaseType: purchaseType,
       paypalID: paypalID,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
     });
-    console.log('✅ Firestore write succeeded, doc ID:', newDoc.id);
+    console.log('✅ Firestore write succeeded, doc ID equals licenseKey:', licenseKey);
 
     // 5d) Generate a signed URL for the DMG
     const fullBlobUrl = process.env.BLOB_FILE_URL;
@@ -392,16 +391,15 @@ async function createLicenseWithSubscriptionId(subscriptionId, purchaseType, pay
     console.log('🔑 Generated licenseKey for subscription ID:', licenseKey);
 
     // Write new license document with subscription ID for manual resolution
-    const newDoc = await db.collection('licenses').add({
-      subscriptionId: subscriptionId, // Store subscription ID for manual lookup
-      licenseKey: licenseKey,
+    await db.collection('licenses').doc(licenseKey).set({
+      subscriptionId: subscriptionId,
       purchaseType: purchaseType,
       paypalID: paypalID,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      status: 'pending_email_resolution', // Flag for manual resolution
+      status: 'pending_email_resolution',
       notes: 'Email could not be resolved from PayPal webhook or API'
     });
-    console.log('✅ Firestore write succeeded with subscription ID, doc ID:', newDoc.id);
+    console.log('✅ Firestore write succeeded with subscription ID, doc ID equals licenseKey:', licenseKey);
 
     // Generate a signed URL for the DMG
     const fullBlobUrl = process.env.BLOB_FILE_URL;
@@ -442,15 +440,14 @@ async function createLicenseWithPayerId(payerId, purchaseType, paypalID, res) {
     console.log('🔑 Generated licenseKey for payer_id:', licenseKey);
 
     // Write new license document with payer_id instead of email
-    const newDoc = await db.collection('licenses').add({
-      payerId: payerId, // Store payer_id instead of email
-      licenseKey: licenseKey,
+    await db.collection('licenses').doc(licenseKey).set({
+      payerId: payerId,
       purchaseType: purchaseType,
       paypalID: paypalID,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      status: 'pending_email_resolution', // Flag for manual resolution
+      status: 'pending_email_resolution'
     });
-    console.log('✅ Firestore write succeeded with payer_id, doc ID:', newDoc.id);
+    console.log('✅ Firestore write succeeded with payer_id, doc ID equals licenseKey:', licenseKey);
 
     // Generate a signed URL for the DMG
     const fullBlobUrl = process.env.BLOB_FILE_URL;

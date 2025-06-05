@@ -44,15 +44,14 @@ export default async function handler(req, res) {
     }
     const licenseKey = generateLicenseKey();
 
-    // 3) Write the new license to Firestore
-    const newDoc = await db.collection('licenses').add({
+    // 3) Write the new license to Firestore (using licenseKey as document ID)
+    await db.collection('licenses').doc(licenseKey).set({
       email: email,
-      licenseKey: licenseKey,
       purchaseType: purchaseType,
       paypalID: paypalID,
       timestamp: admin.firestore.FieldValue.serverTimestamp()
     });
-    console.log('✅ Firestore write succeeded, doc ID:', newDoc.id);
+    console.log('✅ Firestore write succeeded, doc ID equals licenseKey:', licenseKey);
 
     // 4) Generate a signed URL for the DMG
     const fullBlobUrl = process.env.BLOB_FILE_URL;
