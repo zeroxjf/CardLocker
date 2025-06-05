@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CardLocker for macOS</title>
   <style>
+    nav a:hover {
+      text-decoration: underline;
+    }
     /* =========== Reset & Base Styles =========== */
     * {
       box-sizing: border-box;
@@ -393,6 +396,11 @@
 ></script>
 </head>
 <body>
+  <nav style="margin-bottom: 24px; display: flex; justify-content: center; gap: 24px; font-weight: 500;">
+    <a href="index.html" style="text-decoration: none; color: #007aff;">Home</a>
+    <a href="privacy-policy.html" style="text-decoration: none; color: #007aff;">Privacy Policy</a>
+    <a href="terms-of-service.html" style="text-decoration: none; color: #007aff;">Terms of Service</a>
+  </nav>
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
