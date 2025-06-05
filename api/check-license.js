@@ -27,6 +27,11 @@ export default async function handler(req, res) {
         newestDoc = doc;
       }
     });
+    // Read Firestore data from the newest document
+    const data = newestDoc.data();
+    // Extract subscriptionId and paypalID, defaulting to null if not present
+    const subscriptionId = data && data.subscriptionId ? data.subscriptionId : null;
+    const paypalID = data && data.paypalID ? data.paypalID : null;
     // Construct fullBlobUrl (matching purchase.js) and generate a fresh signed URL
     const fullBlobUrl =
       'https://qinhuscfvbuurprs.public.blob.vercel-storage.com/cardlocker/' +
@@ -41,6 +46,8 @@ export default async function handler(req, res) {
       found: true,
       licenseKey: newestDoc.id,
       signedUrl: signedUrl,
+      subscriptionId: subscriptionId,
+      paypalID: paypalID,
     });
   } catch (err) {
     console.error('check-license.js error:', err);

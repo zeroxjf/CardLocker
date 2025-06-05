@@ -44,7 +44,10 @@ export default async function handler(req, res) {
   if (!docSnap.exists) {
     return res.status(404).json({ error: 'License not found' });
   }
-  const { paypalID, purchaseType, status } = docSnap.data();
+  const { subscriptionId, purchaseType, status } = docSnap.data();
+  if (!subscriptionId) {
+    return res.status(500).json({ error: 'No subscriptionId stored for this license' });
+  }
   if (purchaseType !== 'subscription' || status !== 'active') {
     return res.status(400).json({ error: 'Not an active subscription' });
   }
@@ -53,7 +56,7 @@ export default async function handler(req, res) {
     // 2) Cancel via PayPal API
     const accessToken = await getPayPalAccessToken();
     const cancelResponse = await fetch(
-      `https://api-m.paypal.com/v1/billing/subscriptions/${paypalID}/cancel`,
+      `https://api-m.paypal.com/v1/billing/subscriptions/${subscriptionId}/cancel`,
       {
         method: 'POST',
         headers: {

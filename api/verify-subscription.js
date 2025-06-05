@@ -84,11 +84,11 @@ export default async function handler(req, res) {
       if (!licenseDoc.exists) {
         return res.status(404).json({ error: 'License not found' });
       }
-      // Pull subscriptionId from the document data
+      // Pull subscriptionId (prefer) or fallback to paypalID from the document data
       const data = licenseDoc.data();
-      const subId = data.subscriptionId;
+      let subId = data.subscriptionId || data.paypalID;
       if (!subId) {
-        return res.status(400).json({ error: 'No subscriptionId on this license' });
+        return res.status(400).json({ error: 'No subscriptionId or paypalID on this license; cannot verify subscription status.' });
       }
       subscriptionId = subId;
       docRef = licenseDoc.ref;

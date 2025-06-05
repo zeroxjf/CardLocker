@@ -371,8 +371,10 @@ async function createLicenseAndRespond(email, purchaseType, paypalID, res) {
     await db.collection('licenses').doc(licenseKey).set({
       email: email,
       purchaseType: purchaseType,
+      subscriptionId: paypalID,
       paypalID: paypalID,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      status: 'active'
     });
     console.log('✅ Firestore write succeeded, doc ID equals licenseKey:', licenseKey);
 
