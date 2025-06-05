@@ -109,6 +109,9 @@ async function getEmailFromSubscriptionMapping(subscriptionId) {
   return null;
 }
 
+// Import the signature verification function
+import { verifyWebhookSignature } from './paypal';
+
 // 3) Main webhook handler
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -124,6 +127,10 @@ export default async function handler(req, res) {
   ) {
     // This is a manual POST from the frontend after PayPal approval, not a PayPal webhook
     const { subscriptionId, email } = req.body;
+    if (!isValidEmail(email)) {
+      console.warn('⚠️ Invalid email format:', email);
+      return res.status(400).json({ error: 'Invalid email address' });
+    }
     const licenseKey = generateLicenseKey();
     await db.collection('licenses').doc(licenseKey).set({
       subscriptionId,
@@ -136,19 +143,14 @@ export default async function handler(req, res) {
   }
 
   // Otherwise, handle as PayPal webhook (original logic below)
-
   // Get raw body for verification (critical for PayPal verification)
   let rawBody;
   let webhookEvent;
-  
   try {
-    // If req.body is already parsed, we need to get the raw body differently
     if (req.body && typeof req.body === 'object') {
-      // Body is already parsed by Vercel - convert back to string
       rawBody = JSON.stringify(req.body);
       webhookEvent = req.body;
     } else {
-      // Get raw body
       rawBody = await getRawBody(req);
       webhookEvent = JSON.parse(rawBody);
     }
@@ -157,83 +159,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid JSON body' });
   }
 
-  // 3a) Gather PayPal headers
-  const transmissionId = req.headers['paypal-transmission-id'];
-  const transmissionTime = req.headers['paypal-transmission-time'];
-  const certUrl = req.headers['paypal-cert-url'];
-  const authAlgo = req.headers['paypal-auth-algo'];
-  const actualSignature = req.headers['paypal-transmission-sig'];
-  const webhookId = process.env.PAYPAL_WEBHOOK_ID;
-
-  // Debug: Log all headers to identify what's missing
-  console.log('📋 Webhook Headers Debug:');
-  console.log('transmissionId:', transmissionId ? 'PRESENT' : 'MISSING');
-  console.log('transmissionTime:', transmissionTime ? 'PRESENT' : 'MISSING');
-  console.log('certUrl:', certUrl ? 'PRESENT' : 'MISSING');
-  console.log('authAlgo:', authAlgo ? 'PRESENT' : 'MISSING');
-  console.log('actualSignature:', actualSignature ? 'PRESENT' : 'MISSING');
-  console.log('webhookId:', webhookId ? 'PRESENT' : 'MISSING');
-
-  // 3b) Verify all required headers are present
-  if (!transmissionId || !transmissionTime || !certUrl || !authAlgo || !actualSignature || !webhookId) {
-    console.error('❌ Missing required PayPal webhook headers');
-    return res.status(400).json({ 
-      error: 'Missing required PayPal webhook headers',
-      missing: {
-        transmissionId: !transmissionId,
-        transmissionTime: !transmissionTime,
-        certUrl: !certUrl,
-        authAlgo: !authAlgo,
-        actualSignature: !actualSignature,
-        webhookId: !webhookId
-      }
-    });
+  // Signature verification: must happen before any business logic or Firestore writes
+  const isValid = await verifyWebhookSignature(req.headers, req.body);
+  if (!isValid) {
+    console.warn('❌ Invalid PayPal webhook signature');
+    return res.status(400).send('Invalid signature');
   }
-
-  // 3c) Build verification request - use RAW BODY as webhook_event
-  const verifyRequest = {
-    auth_algo: authAlgo,
-    cert_url: certUrl,
-    transmission_id: transmissionId,
-    transmission_sig: actualSignature,
-    transmission_time: transmissionTime,
-    webhook_id: webhookId,
-    webhook_event: JSON.parse(rawBody) // Use parsed version of raw body
-  };
-
-  // 3d) Perform signature verification using direct API call
-  try {
-    // Get access token for verification
-    const accessToken = await getPayPalAccessToken();
-
-    // Verify webhook signature
-    const verifyResponse = await fetch(`${process.env.NODE_ENV === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'}/v1/notifications/verify-webhook-signature`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
-      },
-      body: JSON.stringify(verifyRequest)
-    });
-
-    if (!verifyResponse.ok) {
-      const errorText = await verifyResponse.text();
-      throw new Error(`Verification failed: ${verifyResponse.status} - ${errorText}`);
-    }
-
-    const verifyData = await verifyResponse.json();
-    const verificationStatus = verifyData.verification_status;
-    console.log('🔍 PayPal Webhook verification status:', verificationStatus);
-
-    if (verificationStatus !== 'SUCCESS') {
-      console.error('❌ Invalid PayPal webhook signature');
-      console.error('Verification response:', verifyData);
-      return res.status(400).json({ error: 'Webhook signature verification failed' });
-    }
-  } catch (verifyErr) {
-    console.error('❌ Error verifying PayPal webhook signature:', verifyErr);
-    return res.status(500).json({ error: 'Error verifying webhook signature', details: verifyErr.message });
-  }
+  console.log('✅ Webhook signature verified');
 
   // 4) Handle only the events we care about:
   const eventType = webhookEvent.event_type;
@@ -356,15 +288,21 @@ export default async function handler(req, res) {
   }
 }
 
-// Helper to generate license key (for manual POST)
-function generateLicenseKey() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let key = '';
-  for (let i = 0; i < 20; i++) {
-    if (i > 0 && i % 5 === 0) key += '-';
-    key += chars.charAt(Math.floor(Math.random() * chars.length));
+import { randomBytes } from 'crypto';
+
+// Helper to generate a unique license key in Firestore
+async function generateUniqueLicenseKey() {
+  const db = admin.firestore();
+  let licenseKey;
+  let exists = true;
+
+  while (exists) {
+    licenseKey = randomBytes(6).toString('hex'); // e.g. "a3f1e2b4c5d6"
+    const doc = await db.collection('licenses').doc(licenseKey).get();
+    exists = doc.exists;
   }
-  return key;
+
+  return licenseKey;
 }
 
 // 5) Helper: writes Firestore + returns licenseKey JSON (signed URL logic removed)
@@ -377,25 +315,20 @@ async function createLicenseAndRespond(email, purchaseType, paypalID, res) {
     }
     // If email is present, enforce license count limit
     if (emailToCheck && emailToCheck.includes('@')) {
+      if (!isValidEmail(emailToCheck)) {
+        console.warn('⚠️ Invalid email format');
+        return res.status(400).json({ error: 'Invalid email address' });
+      }
       const snapshot = await db.collection('licenses').where('email', '==', emailToCheck).get();
       if (snapshot.size >= 5) {
-        console.warn(`⚠️ License limit reached for ${emailToCheck}`);
+        console.warn('⚠️ License limit reached for this email');
         return res.status(403).json({ error: 'Maximum of 5 licenses per email reached.' });
       }
     }
 
-    // 5b) Generate a license key
-    function generateLicenseKey() {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let key = '';
-      for (let i = 0; i < 20; i++) {
-        if (i > 0 && i % 5 === 0) key += '-';
-        key += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return key;
-    }
-    const licenseKey = generateLicenseKey();
-    console.log('🔑 Generated licenseKey:', licenseKey);
+    // 5b) Generate a unique license key
+    const licenseKey = await generateUniqueLicenseKey();
+    console.log('🔑 License issued (ID redacted for security)');
 
     // Compose docData, ensuring email is included if available
     let docData = {
@@ -418,6 +351,10 @@ async function createLicenseAndRespond(email, purchaseType, paypalID, res) {
       userEmailFromForm = res.req.body.email;
     }
     if (userEmailFromForm) {
+      if (!isValidEmail(userEmailFromForm)) {
+        console.warn('⚠️ Invalid email format');
+        return res.status(400).json({ error: 'Invalid email address' });
+      }
       docData.email = userEmailFromForm;
     } else {
       docData.status = 'pending_email';
@@ -425,7 +362,7 @@ async function createLicenseAndRespond(email, purchaseType, paypalID, res) {
     }
 
     await db.collection('licenses').doc(licenseKey).set(docData);
-    console.log('✅ Firestore write succeeded, doc ID equals licenseKey:', licenseKey);
+    console.log('📄 Firestore document created');
 
     // 5e) Return JSON { licenseKey }
     return res.status(200).json({ licenseKey });
@@ -438,18 +375,9 @@ async function createLicenseAndRespond(email, purchaseType, paypalID, res) {
 // 6) NEW: Fallback helper for when we can't get email but have subscription ID (signed URL logic removed)
 async function createLicenseWithSubscriptionId(subscriptionId, purchaseType, paypalID, res, payerEmail = null) {
   try {
-    // Generate a license key
-    function generateLicenseKey() {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let key = '';
-      for (let i = 0; i < 20; i++) {
-        if (i > 0 && i % 5 === 0) key += '-';
-        key += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return key;
-    }
-    const licenseKey = generateLicenseKey();
-    console.log('🔑 Generated licenseKey for subscription ID:', licenseKey);
+    // Generate a unique license key
+    const licenseKey = await generateUniqueLicenseKey();
+    console.log('🔑 License issued (ID redacted for security)');
 
     // Compose docData with conditional email logic
     const docData = {
@@ -467,7 +395,7 @@ async function createLicenseWithSubscriptionId(subscriptionId, purchaseType, pay
     }
 
     await db.collection('licenses').doc(licenseKey).set(docData);
-    console.log('✅ Firestore write succeeded with subscription ID, doc ID equals licenseKey:', licenseKey);
+    console.log('📄 Firestore document created');
 
     // (Removed signed URL logic)
 
@@ -487,18 +415,9 @@ async function createLicenseWithSubscriptionId(subscriptionId, purchaseType, pay
 // 7) ORIGINAL: Fallback helper: stores license with payer_id for manual resolution (signed URL logic removed)
 async function createLicenseWithPayerId(payerId, purchaseType, paypalID, res) {
   try {
-    // Generate a license key
-    function generateLicenseKey() {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let key = '';
-      for (let i = 0; i < 20; i++) {
-        if (i > 0 && i % 5 === 0) key += '-';
-        key += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return key;
-    }
-    const licenseKey = generateLicenseKey();
-    console.log('🔑 Generated licenseKey for payer_id:', licenseKey);
+    // Generate a unique license key
+    const licenseKey = await generateUniqueLicenseKey();
+    console.log('🔑 License issued (ID redacted for security)');
 
     // Write new license document with payer_id instead of email
     await db.collection('licenses').doc(licenseKey).set({
@@ -508,7 +427,7 @@ async function createLicenseWithPayerId(payerId, purchaseType, paypalID, res) {
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
       status: 'pending_email_resolution'
     });
-    console.log('✅ Firestore write succeeded with payer_id, doc ID equals licenseKey:', licenseKey);
+    console.log('📄 Firestore document created');
 
     // (Removed signed URL logic)
 
@@ -518,4 +437,9 @@ async function createLicenseWithPayerId(payerId, purchaseType, paypalID, res) {
     console.error('❌ Error in createLicenseWithPayerId:', error);
     throw error;
   }
+}
+// Helper to validate email format
+function isValidEmail(email) {
+  if (typeof email !== "string") return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
