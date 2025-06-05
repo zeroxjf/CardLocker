@@ -628,7 +628,7 @@
                 body: JSON.stringify(licensePayload)
               });
               if (!resp.ok) throw new Error('Server error ' + resp.status);
-              const { licenseKey, signedUrl } = await resp.json();
+              const { licenseKey } = await resp.json();
               
               // Show “Thank You” modal with the actual license key
               showThankYouModal(email, licenseKey);
@@ -702,7 +702,7 @@
             })
             .then(async resp => {
               if (!resp.ok) throw new Error('Server error ' + resp.status);
-              const { licenseKey, signedUrl } = await resp.json();
+              const { licenseKey } = await resp.json();
               // Update modal with actual license key
               document.getElementById('customer-license').textContent = licenseKey;
             })
@@ -716,7 +716,7 @@
                 try {
                   const resp = await fetch(`/api/check-license?email=${encodeURIComponent(email)}`);
                   if (!resp.ok) throw new Error('Server error ' + resp.status);
-                  const { found, licenseKey, signedUrl } = await resp.json();
+                  const { found, licenseKey } = await resp.json();
                   if (found) {
                     clearInterval(intervalId);
                     document.getElementById('customer-license').textContent = licenseKey;

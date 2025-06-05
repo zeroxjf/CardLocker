@@ -1,6 +1,6 @@
 // File: api/paypal-webhook.js
 
-import { getDownloadUrl } from '@vercel/blob';
+// Removed: import { getDownloadUrl } from '@vercel/blob';
 import admin from 'firebase-admin';
 import checkoutNodeJssdk from '@paypal/checkout-server-sdk';
 
@@ -344,7 +344,7 @@ export default async function handler(req, res) {
   }
 }
 
-// 5) Helper: writes Firestore + returns signed URL JSON
+// 5) Helper: writes Firestore + returns licenseKey JSON (signed URL logic removed)
 async function createLicenseAndRespond(email, purchaseType, paypalID, res) {
   try {
     // 5a) Check existing license count
@@ -378,25 +378,17 @@ async function createLicenseAndRespond(email, purchaseType, paypalID, res) {
     });
     console.log('✅ Firestore write succeeded, doc ID equals licenseKey:', licenseKey);
 
-    // 5d) Generate a signed URL for the DMG
-    const fullBlobUrl = process.env.BLOB_FILE_URL;
-    console.log('🔗 Generating signed URL for:', fullBlobUrl);
+    // 5d) (Removed signed URL logic)
 
-    const signedUrl = await getDownloadUrl(fullBlobUrl, {
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-      expiresIn: 60 * 5, // 5 minutes
-    });
-    console.log('🔒 Signed URL generated:', signedUrl);
-
-    // 5e) Return JSON { licenseKey, signedUrl }
-    return res.status(200).json({ licenseKey, signedUrl });
+    // 5e) Return JSON { licenseKey }
+    return res.status(200).json({ licenseKey });
   } catch (error) {
     console.error('❌ Error in createLicenseAndRespond:', error);
     throw error;
   }
 }
 
-// 6) NEW: Fallback helper for when we can't get email but have subscription ID
+// 6) NEW: Fallback helper for when we can't get email but have subscription ID (signed URL logic removed)
 async function createLicenseWithSubscriptionId(subscriptionId, purchaseType, paypalID, res) {
   try {
     // Generate a license key
@@ -423,20 +415,11 @@ async function createLicenseWithSubscriptionId(subscriptionId, purchaseType, pay
     });
     console.log('✅ Firestore write succeeded with subscription ID, doc ID equals licenseKey:', licenseKey);
 
-    // Generate a signed URL for the DMG
-    const fullBlobUrl = process.env.BLOB_FILE_URL;
-    console.log('🔗 Generating signed URL for:', fullBlobUrl);
+    // (Removed signed URL logic)
 
-    const signedUrl = await getDownloadUrl(fullBlobUrl, {
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-      expiresIn: 60 * 5, // 5 minutes
-    });
-    console.log('🔒 Signed URL generated:', signedUrl);
-
-    // Return JSON { licenseKey, signedUrl } - same as normal flow
-    return res.status(200).json({ 
-      licenseKey, 
-      signedUrl,
+    // Return JSON { licenseKey } - same as normal flow
+    return res.status(200).json({
+      licenseKey,
       note: 'License created with subscription ID - email resolution pending'
     });
   } catch (error) {
@@ -445,7 +428,7 @@ async function createLicenseWithSubscriptionId(subscriptionId, purchaseType, pay
   }
 }
 
-// 7) ORIGINAL: Fallback helper: stores license with payer_id for manual resolution
+// 7) ORIGINAL: Fallback helper: stores license with payer_id for manual resolution (signed URL logic removed)
 async function createLicenseWithPayerId(payerId, purchaseType, paypalID, res) {
   try {
     // Generate a license key
@@ -471,18 +454,10 @@ async function createLicenseWithPayerId(payerId, purchaseType, paypalID, res) {
     });
     console.log('✅ Firestore write succeeded with payer_id, doc ID equals licenseKey:', licenseKey);
 
-    // Generate a signed URL for the DMG
-    const fullBlobUrl = process.env.BLOB_FILE_URL;
-    console.log('🔗 Generating signed URL for:', fullBlobUrl);
+    // (Removed signed URL logic)
 
-    const signedUrl = await getDownloadUrl(fullBlobUrl, {
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-      expiresIn: 60 * 5, // 5 minutes
-    });
-    console.log('🔒 Signed URL generated:', signedUrl);
-
-    // Return JSON { licenseKey, signedUrl } - same as normal flow
-    return res.status(200).json({ licenseKey, signedUrl });
+    // Return JSON { licenseKey }
+    return res.status(200).json({ licenseKey });
   } catch (error) {
     console.error('❌ Error in createLicenseWithPayerId:', error);
     throw error;

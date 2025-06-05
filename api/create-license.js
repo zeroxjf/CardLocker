@@ -1,7 +1,6 @@
 // File: api/create-license.js
 
 import admin from 'firebase-admin';
-import { getDownloadUrl } from '@vercel/blob';
 
 // Initialize Firebase Admin (if not already initialized)
 if (!admin.apps.length) {
@@ -66,15 +65,10 @@ if (purchaseType === 'subscription') {
     await db.collection('licenses').doc(licenseKey).set(docData);
     console.log('✅ Firestore write succeeded, doc ID =', licenseKey);
 
-    // 7) Generate a signed URL for the DMG
-    const fullBlobUrl = process.env.BLOB_FILE_URL;
-    const signedUrl = await getDownloadUrl(fullBlobUrl, {
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-      expiresIn: 60 * 5 // 5 minutes
-    });
+    // 7) (Removed signed URL logic)
 
     // 8) Return payload (no manageSubscriptionUrl)
-    return res.status(200).json({ licenseKey, signedUrl });
+    return res.status(200).json({ licenseKey });
 
   } catch (err) {
     console.error('❌ Error in /api/create-license:', err);

@@ -23,13 +23,25 @@ module.exports = async function handler(req, res) {
   }
   try {
     console.log('🔍 Querying licenses with paypalID:', paypalId);
-    const snapshot = await db.collection('licenses').where('paypalID', '==', paypalId).get();
+    const snapshot = await db.collection('licenses')
+      .where('paypalID', '==', paypalId)
+      .get();
+
+    // If not found by paypalID, try subscriptionId
+    let allDocs = [...snapshot.docs];
     if (snapshot.empty) {
+      const subSnap = await db.collection('licenses')
+        .where('subscriptionId', '==', paypalId)
+        .get();
+      allDocs = [...subSnap.docs];
+    }
+
+    if (allDocs.length === 0) {
       return res.status(200).json({ found: false });
     }
     // If multiple licenses exist, pick the newest one by timestamp, with logging and guards for bad data
     let newestDoc = null;
-    snapshot.forEach(doc => {
+    allDocs.forEach(doc => {
       const data = doc.data();
       if (!data.timestamp || typeof data.timestamp.toMillis !== 'function') {
         console.warn('⚠️ Skipping document with invalid or missing timestamp:', doc.id);
@@ -53,20 +65,9 @@ module.exports = async function handler(req, res) {
     // Extract subscriptionId and paypalID, defaulting to null if not present
     const subscriptionId = data && data.subscriptionId ? data.subscriptionId : null;
     const paypalID = data && data.paypalID ? data.paypalID : null;
-    // Construct fullBlobUrl (matching purchase.js) and generate a fresh signed URL
-    const fullBlobUrl =
-      'https://qinhuscfvbuurprs.public.blob.vercel-storage.com/cardlocker/' +
-      'CardLocker-qNcAFlKgf0ku0HXcgI0DXm3utFmtoZ.dmg';
-    // We need @vercel/blob here too:
-    const { getDownloadUrl } = require('@vercel/blob');
-    const signedUrl = await getDownloadUrl(fullBlobUrl, {
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-      expiresIn: 60 * 5,
-    });
     return res.status(200).json({
       found: true,
       licenseKey: newestDoc.id,
-      signedUrl: signedUrl,
       subscriptionId: subscriptionId,
       paypalID: paypalID,
     });
