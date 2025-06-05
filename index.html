@@ -530,10 +530,10 @@
 
         <div class="card license-section" id="resend">
           <h2>Resend License Code</h2>
-          <p>Enter your email to receive your license code.</p>
+          <p>Enter your PayPal transaction ID (resource ID) to retrieve your license key.</p>
           <div style="display: flex; align-items: center; gap: 8px; margin-top: 12px;">
-            <input id="emailInput" type="email" placeholder="Enter your email" required style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
-            <button id="confirmEmailBtn" style="padding: 8px 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            <input id="transactionIdInput" type="text" placeholder="Enter your transaction ID" required style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
+            <button id="confirmTransactionBtn" style="padding: 8px 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
               Confirm
             </button>
           </div>
@@ -802,15 +802,13 @@
   });
 </script>
 <script>
-  // Confirm email and visually confirm the email with alert
-  document.getElementById('confirmEmailBtn').addEventListener('click', async () => {
-    const email = document.getElementById('emailInput').value.trim();
-    if (email) {
-      alert(`You entered: ${email}\nPlease double-check it before submitting.`);
-      // Optionally, you can send the email to your backend to retrieve license here
-      // Example: fetch license by email (adapt endpoint as needed)
+  // Confirm transaction ID and visually confirm the input with alert
+  document.getElementById('confirmTransactionBtn').addEventListener('click', async () => {
+    const txId = document.getElementById('transactionIdInput').value.trim();
+    if (txId) {
+      alert(`You entered: ${txId}\nPlease double-check it before submitting.`);
       try {
-        const resp = await fetch('https://www.cardlocker.net/api/check-license?paypalId=' + encodeURIComponent(email));
+        const resp = await fetch('https://www.cardlocker.net/api/check-license?paypalId=' + encodeURIComponent(txId));
         const clone = resp.clone();
         let data;
         try {
@@ -822,17 +820,16 @@
           return;
         }
         if (data && data.found && data.licenseKey) {
-          // Show modal with the license key
           document.getElementById('customer-license').textContent = data.licenseKey;
           document.getElementById('customer-email').textContent = '';
-          document.getElementById('modal-message').textContent = 'The license key associated with this email is:';
+          document.getElementById('modal-message').textContent = 'The license key associated with this transaction is:';
           const modal = document.getElementById('thankyou-modal');
           modal.classList.add('show');
           document.getElementById('close-modal').addEventListener('click', () => {
             modal.classList.remove('show');
           });
         } else {
-          alert('Could not find a license for that email. Please check your info or contact support.');
+          alert('Could not find a license for that transaction ID. Please check your info or contact support.');
         }
       } catch (err) {
         console.error('Error retrieving license:', err);
