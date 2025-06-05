@@ -607,44 +607,25 @@
           },
           onApprove: async function (data) {
             // Always retrieve the email from the input field
-            const emailInput = document.getElementById('email-subscribe');
-            const userEmail = emailInput ? emailInput.value.trim() : email;
-            const paypalId = data.subscriptionID || data.orderID;
-            if (userEmail && paypalId) {
-              // Send email to backend in JSON body for subscription
-              fetch('/api/create-license', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  paypalId: paypalId,
-                  email: userEmail,
-                  purchaseType: 'subscription'
-                })
-              }).catch(() => {});
-            }
-            // NEW: Always send email to /api/paypal-webhook for manual trigger
-            if (userEmail && paypalId) {
-              fetch('/api/paypal-webhook', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  email: userEmail,
-                  paypalId: paypalId,
-                  eventType: 'manual_trigger'
-                })
-              }).catch(() => {});
-            }
+            const email = document.getElementById('email-subscribe')?.value || '';
+            // Send email to backend in JSON body for subscription
+            fetch('/api/paypal-webhook', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                subscriptionId: data.subscriptionID,
+                email: email
+              })
+            });
             // Show "Thank You" modal with placeholder
-            showThankYouModal(userEmail, 'Generating license…');
+            showThankYouModal(email, 'Generating license…');
 
             let attempts = 0;
             const maxAttempts = 15;
             const interval = setInterval(async () => {
               attempts++;
               try {
-                const resp = await fetch(`/api/check-license?paypalId=${encodeURIComponent(paypalId)}`);
+                const resp = await fetch(`/api/check-license?paypalId=${encodeURIComponent(data.subscriptionID)}`);
                 const { found, licenseKey } = await resp.json();
                 if (found) {
                   clearInterval(interval);

@@ -115,6 +115,28 @@ export default async function handler(req, res) {
     return res.status(405).send('Method not allowed');
   }
 
+  // If the request is a manual trigger from the frontend, handle email + subscriptionId directly
+  if (
+    req.body &&
+    typeof req.body === 'object' &&
+    req.body.subscriptionId &&
+    req.body.email
+  ) {
+    // This is a manual POST from the frontend after PayPal approval, not a PayPal webhook
+    const { subscriptionId, email } = req.body;
+    const licenseKey = generateLicenseKey();
+    await db.collection('licenses').doc(licenseKey).set({
+      subscriptionId,
+      email,
+      licenseKey,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      purchaseType: 'subscription'
+    });
+    return res.status(200).json({ licenseKey });
+  }
+
+  // Otherwise, handle as PayPal webhook (original logic below)
+
   // Get raw body for verification (critical for PayPal verification)
   let rawBody;
   let webhookEvent;
@@ -332,6 +354,17 @@ export default async function handler(req, res) {
     console.error('❌ Error in webhook handler:', err);
     return res.status(500).json({ error: 'Internal error in webhook handler', details: err.message });
   }
+}
+
+// Helper to generate license key (for manual POST)
+function generateLicenseKey() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let key = '';
+  for (let i = 0; i < 20; i++) {
+    if (i > 0 && i % 5 === 0) key += '-';
+    key += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return key;
 }
 
 // 5) Helper: writes Firestore + returns licenseKey JSON (signed URL logic removed)
