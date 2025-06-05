@@ -338,10 +338,17 @@ export default async function handler(req, res) {
 async function createLicenseAndRespond(email, purchaseType, paypalID, res) {
   try {
     // 5a) Check existing license count
-    const snapshot = await db.collection('licenses').where('email', '==', email).get();
-    if (snapshot.size >= 5) {
-      console.warn(`⚠️ License limit reached for ${email}`);
-      return res.status(403).json({ error: 'Maximum of 5 licenses per email reached.' });
+    let emailToCheck = email && typeof email === "string" ? email : null;
+    if (!emailToCheck && res && res.req && res.req.body && res.req.body.email) {
+      emailToCheck = res.req.body.email;
+    }
+    // If email is present, enforce license count limit
+    if (emailToCheck && emailToCheck.includes('@')) {
+      const snapshot = await db.collection('licenses').where('email', '==', emailToCheck).get();
+      if (snapshot.size >= 5) {
+        console.warn(`⚠️ License limit reached for ${emailToCheck}`);
+        return res.status(403).json({ error: 'Maximum of 5 licenses per email reached.' });
+      }
     }
 
     // 5b) Generate a license key
@@ -357,22 +364,28 @@ async function createLicenseAndRespond(email, purchaseType, paypalID, res) {
     const licenseKey = generateLicenseKey();
     console.log('🔑 Generated licenseKey:', licenseKey);
 
-    // Extract email from req.body if available (fallback to null)
-    // (This is only possible if req is in scope; if not, see below.)
-    // But since only email is passed as argument, we adapt:
-    // Instead, add logic as if coming from req.body for compatibility with the instructions.
-    // We'll mimic: "const email = req.body?.email || null;" and conditional docData composition.
-    // So, treat 'email' arg as the possibly null/invalid email value.
-    const docData = {
-      subscriptionId: paypalID,
+    // Compose docData, ensuring email is included if available
+    let docData = {
+      licenseKey: licenseKey,
       purchaseType,
       paypalID,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
       status: 'active'
     };
+    // For subscriptions, store subscriptionId as well
+    if (purchaseType === 'subscription') {
+      docData.subscriptionId = paypalID;
+    }
 
+    // Try to get email from all possible sources: argument or req.body (for manual trigger)
+    let userEmailFromForm = null;
     if (email && email.includes('@')) {
-      docData.email = email;
+      userEmailFromForm = email;
+    } else if (res && res.req && res.req.body && res.req.body.email && res.req.body.email.includes('@')) {
+      userEmailFromForm = res.req.body.email;
+    }
+    if (userEmailFromForm) {
+      docData.email = userEmailFromForm;
     } else {
       docData.status = 'pending_email';
       docData.notes = 'Email missing from webhook and request body.';
@@ -380,8 +393,6 @@ async function createLicenseAndRespond(email, purchaseType, paypalID, res) {
 
     await db.collection('licenses').doc(licenseKey).set(docData);
     console.log('✅ Firestore write succeeded, doc ID equals licenseKey:', licenseKey);
-
-    // 5d) (Removed signed URL logic)
 
     // 5e) Return JSON { licenseKey }
     return res.status(200).json({ licenseKey });

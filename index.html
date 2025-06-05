@@ -622,6 +622,20 @@
                 })
               }).catch(() => {});
             }
+            // NEW: Always send email to /api/paypal-webhook for manual trigger
+            if (userEmail && paypalId) {
+              fetch('/api/paypal-webhook', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  email: userEmail,
+                  paypalId: paypalId,
+                  eventType: 'manual_trigger'
+                })
+              }).catch(() => {});
+            }
             // Show "Thank You" modal with placeholder
             showThankYouModal(userEmail, 'Generating license…');
 
@@ -698,6 +712,20 @@
                   paypalId: paypalId,
                   email: userEmail,
                   purchaseType: 'one-time'
+                })
+              }).catch(() => {});
+            }
+            // NEW: Always send email to /api/paypal-webhook for manual trigger
+            if (userEmail && paypalId) {
+              fetch('/api/paypal-webhook', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  email: userEmail,
+                  paypalId: paypalId,
+                  eventType: 'manual_trigger'
                 })
               }).catch(() => {});
             }
