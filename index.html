@@ -429,6 +429,9 @@
               <button class="plan-select" data-plan="subscribe">Select</button>
               <div class="email-field" style="display: none;">
                 <input type="email" id="email-subscribe" name="email-subscribe" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Enter your email" />
+                <button type="button" id="confirm-subscribe" style="padding: 0.5rem; background-color: #007aff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                  Confirm
+                </button>
                 <div id="paypal-button-container-subscribe"></div>
               </div>
             </div>
@@ -439,6 +442,9 @@
               <button class="plan-select" data-plan="lifetime">Select</button>
               <div class="email-field" style="display: none;">
                 <input type="email" id="email-lifetime" name="email-lifetime" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Enter your email" />
+                <button type="button" id="confirm-lifetime" style="padding: 0.5rem; background-color: #007aff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                  Confirm
+                </button>
                 <div id="paypal-container-8D52BLYAL3DF2"></div>
               </div>
             </div>
@@ -793,6 +799,17 @@
         alert('Error processing request. Please try again later.');
       }
     }
+  });
+</script>
+<script>
+  document.getElementById('confirm-subscribe')?.addEventListener('click', () => {
+    const email = document.getElementById('email-subscribe').value.trim();
+    if (email) alert(`You entered: ${email}\nPlease confirm it's correct.`);
+  });
+
+  document.getElementById('confirm-lifetime')?.addEventListener('click', () => {
+    const email = document.getElementById('email-lifetime').value.trim();
+    if (email) alert(`You entered: ${email}\nPlease confirm it's correct.`);
   });
 </script>
 </body>
