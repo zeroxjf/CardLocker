@@ -379,7 +379,7 @@ async function createLicenseAndRespond(email, purchaseType, paypalID, res) {
 }
 
 // 6) NEW: Fallback helper for when we can't get email but have subscription ID (signed URL logic removed)
-async function createLicenseWithSubscriptionId(subscriptionId, purchaseType, paypalID, res) {
+async function createLicenseWithSubscriptionId(subscriptionId, purchaseType, paypalID, res, payerEmail = null) {
   try {
     // Generate a license key
     function generateLicenseKey() {
@@ -394,15 +394,22 @@ async function createLicenseWithSubscriptionId(subscriptionId, purchaseType, pay
     const licenseKey = generateLicenseKey();
     console.log('🔑 Generated licenseKey for subscription ID:', licenseKey);
 
-    // Write new license document with subscription ID for manual resolution
-    await db.collection('licenses').doc(licenseKey).set({
-      subscriptionId: subscriptionId,
-      purchaseType: purchaseType,
-      paypalID: paypalID,
+    // Compose docData with conditional email logic
+    const docData = {
+      subscriptionId,
+      purchaseType,
+      paypalID,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      status: 'pending_email_resolution',
-      notes: 'Email could not be resolved from PayPal webhook or API'
-    });
+      status: 'active'
+    };
+    if (payerEmail && payerEmail.includes('@')) {
+      docData.email = payerEmail;
+    } else {
+      docData.status = 'pending_email_resolution';
+      docData.notes = 'Email could not be resolved from PayPal webhook or API';
+    }
+
+    await db.collection('licenses').doc(licenseKey).set(docData);
     console.log('✅ Firestore write succeeded with subscription ID, doc ID equals licenseKey:', licenseKey);
 
     // (Removed signed URL logic)
@@ -410,7 +417,9 @@ async function createLicenseWithSubscriptionId(subscriptionId, purchaseType, pay
     // Return JSON { licenseKey } - same as normal flow
     return res.status(200).json({
       licenseKey,
-      note: 'License created with subscription ID - email resolution pending'
+      note: docData.status === 'pending_email_resolution'
+        ? 'License created with subscription ID - email resolution pending'
+        : 'License created with valid email'
     });
   } catch (error) {
     console.error('❌ Error in createLicenseWithSubscriptionId:', error);

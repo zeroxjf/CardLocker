@@ -606,12 +606,28 @@
             });
           },
           onApprove: async function (data) {
+            // Capture email from input field
+            const emailInput = document.getElementById('email-subscribe');
+            const userEmail = emailInput ? emailInput.value.trim() : email;
+            // Optionally, send to backend for mapping
+            const paypalId = data.subscriptionID || data.orderID;
+            if (userEmail && paypalId) {
+              // Store a mapping in Firestore so webhook can resolve email
+              fetch('/api/create-license', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  paypalId: paypalId,
+                  email: userEmail,
+                  plan: 'subscription'
+                })
+              }).catch(() => {});
+            }
             // Show "Thank You" modal with placeholder
-            showThankYouModal(email, 'Generating license…');
+            showThankYouModal(userEmail, 'Generating license…');
 
             let attempts = 0;
             const maxAttempts = 15;
-            const paypalId = data.subscriptionID || data.orderID;
             const interval = setInterval(async () => {
               attempts++;
               try {
@@ -670,12 +686,28 @@
             });
           },
           onApprove(data, actions) {
+            // Capture email from input field
+            const emailInput = document.getElementById('email-lifetime');
+            const userEmail = emailInput ? emailInput.value.trim() : email;
+            // Optionally, send to backend for mapping
+            const paypalId = data.subscriptionID || data.orderID;
+            if (userEmail && paypalId) {
+              // Store a mapping in Firestore so webhook can resolve email
+              fetch('/api/create-license', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  paypalId: paypalId,
+                  email: userEmail,
+                  plan: 'lifetime'
+                })
+              }).catch(() => {});
+            }
             // Show "Thank You" modal with placeholder
-            showThankYouModal(email, 'Generating license…');
+            showThankYouModal(userEmail, 'Generating license…');
 
             let attempts = 0;
             const maxAttempts = 15;
-            const paypalId = data.subscriptionID || data.orderID;
             const interval = setInterval(async () => {
               attempts++;
               try {
