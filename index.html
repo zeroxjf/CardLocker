@@ -101,13 +101,13 @@
       margin-bottom: 3rem;
     }
     .card-container {
-      flex: 1 1 600px;
+      flex: 1 1 500px;
       display: flex;
       flex-direction: column;
       gap: 2rem;
     }
     .side-panel {
-      flex: 0 0 350px;
+      flex: 0 0 500px;
       display: flex;
       flex-direction: column;
       align-items: stretch;
@@ -152,7 +152,8 @@
     }
     .screenshot {
       width: 100%;
-      max-width: 100%;
+      max-width: none;
+      height: auto;
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.05);
       margin-bottom: 1rem;
@@ -483,7 +484,7 @@
           <p>Enter your PayPal Transaction ID to retrieve your license code.</p>
           <form id="resend-form">
             <input type="text" id="resend-paypal-id" placeholder="Enter your PayPal Transaction ID" required />
-            <button type="submit">Resend License</button>
+            <button type="submit">Retrieve License Code</button>
           </form>
           <div id="resend-result"></div>
         </div>
@@ -768,7 +769,7 @@
         // Show modal with the license key
         document.getElementById('customer-license').textContent = data.licenseKey;
         document.getElementById('customer-email').textContent = '';
-        document.getElementById('modal-message').textContent = 'Your license key is:';
+        document.getElementById('modal-message').textContent = 'The license key associated with this transaction ID is:';
         const modal = document.getElementById('thankyou-modal');
         modal.classList.add('show');
       } else {
