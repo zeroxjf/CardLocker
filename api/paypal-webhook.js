@@ -281,10 +281,9 @@ export default async function handler(req, res) {
           console.log('🔍 PayPal API subscription details:', JSON.stringify(subscriptionDetails, null, 2));
           
           // Try multiple possible paths in the API response
-          payerEmail = 
+          payerEmail =
             subscriptionDetails.subscriber?.email_address ||
-            subscriptionDetails.subscriber?.payer_id ||
-            subscriptionDetails.billing_info?.email_address;
+            subscriptionDetails.billing_info?.email_address || null;
           
           if (payerEmail) {
             console.log('✅ Found email in PayPal API response:', payerEmail);
@@ -294,18 +293,9 @@ export default async function handler(req, res) {
         }
       }
 
-      // Step 4: Final check - if we still don't have email, log everything for debugging
-      if (!payerEmail) {
-        console.error('❌ COMPLETE EMAIL RESOLUTION FAILURE');
-        console.error('Subscription ID:', subscriptionId);
-        console.error('Webhook resource subscriber paths:');
-        console.error('  - resource.subscriber:', !!resource.subscriber);
-        console.error('  - resource.subscriber.email_address:', resource.subscriber?.email_address);
-        console.error('  - resource.billing_info:', !!resource.billing_info);
-        console.error('  - resource.payer:', !!resource.payer);
-        
-        // As a last resort, create a license with subscription ID for manual resolution
-        console.log('🚨 Creating license with subscription ID for manual resolution');
+      // Step 4: Email validation - must be present and valid
+      if (!payerEmail || !payerEmail.includes('@')) {
+        console.error('❌ Invalid or missing email — skipping email delivery');
         await createLicenseWithSubscriptionId(subscriptionId, purchaseType, subscriptionId, res);
         return;
       }
