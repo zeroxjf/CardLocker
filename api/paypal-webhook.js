@@ -315,7 +315,27 @@ export default async function handler(req, res) {
       return;
     }
 
-    // 4c) Other events: ignore
+    // 4c) Subscription cancelled or suspended
+    if (eventType === 'BILLING.SUBSCRIPTION.CANCELLED') {
+      const subscriptionId = resource.id;
+      console.log('🔍 BILLING.SUBSCRIPTION.CANCELLED for subscriptionId:', subscriptionId);
+      // Find the license document with this subscriptionId
+      const snap = await db
+        .collection('licenses')
+        .where('subscriptionId', '==', subscriptionId)
+        .limit(1)
+        .get();
+      if (!snap.empty) {
+        const docRef = snap.docs[0].ref;
+        await docRef.update({ status: 'inactive' });
+        console.log('⚠️ License set to inactive for document ID:', docRef.id);
+      } else {
+        console.warn('⚠️ No license found for cancelled subscriptionId:', subscriptionId);
+      }
+      return res.status(200).send('Subscription cancelled handled');
+    }
+
+    // 4d) Other events: ignore
     console.log('ℹ️ Unhandled event type:', eventType);
     return res.status(200).send('Event ignored');
   } catch (err) {

@@ -49,7 +49,8 @@ export default async function handler(req, res) {
       email: email,
       purchaseType: purchaseType,
       paypalID: paypalID,
-      timestamp: admin.firestore.FieldValue.serverTimestamp()
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      status: "active"
     });
     console.log('✅ Firestore write succeeded, doc ID equals licenseKey:', licenseKey);
 

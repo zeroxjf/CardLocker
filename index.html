@@ -480,9 +480,9 @@
 
         <div class="card license-section" id="resend">
           <h2>Resend License Code</h2>
-          <p>Enter your email to have your license code resent to you.</p>
+          <p>Enter your PayPal Transaction ID to retrieve your license code.</p>
           <form id="resend-form">
-            <input type="email" id="resend-email" placeholder="Enter your email" required />
+            <input type="text" id="resend-paypal-id" placeholder="Enter your PayPal Transaction ID" required />
             <button type="submit">Resend License</button>
           </form>
           <div id="resend-result"></div>
@@ -710,6 +710,35 @@
           renderLifetimeButton(emailInputLife.value.trim());
         }
       });
+    }
+</script>
+<script>
+  // Handle "Resend License Code" form submission (PayPal ID only)
+  const resendForm = document.getElementById('resend-form');
+  resendForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const paypalId = document.getElementById('resend-paypal-id').value.trim();
+    if (!paypalId) {
+      alert('Please enter your PayPal Transaction ID.');
+      return;
+    }
+    try {
+      // Query the license by PayPal ID
+      const resp = await fetch('https://www.cardlocker.net/api/check-license?paypalId=' + encodeURIComponent(paypalId));
+      const data = await resp.json();
+      if (data && data.found && data.licenseKey) {
+        // Show modal with the license key
+        document.getElementById('customer-license').textContent = data.licenseKey;
+        document.getElementById('customer-email').textContent = '';
+        document.getElementById('modal-message').textContent = 'Your license key is:';
+        const modal = document.getElementById('thankyou-modal');
+        modal.classList.add('show');
+      } else {
+        alert('Could not find a license for that PayPal Transaction ID. Please check your info or contact support.');
+      }
+    } catch (err) {
+      console.error('Error retrieving license:', err);
+      alert('Error processing request. Please try again later.');
     }
   });
 </script>
