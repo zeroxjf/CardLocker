@@ -79,6 +79,7 @@ export default async function handler(req, res) {
   try {
     // 2) Cancel via PayPal API
     const accessToken = await getPayPalAccessToken();
+    // ✅ subscriptionId here matches PayPal's I-... subscription ID (aka resourceId)
     const cancelResponse = await fetch(
       `https://api-m.paypal.com/v1/billing/subscriptions/${subscriptionId}/cancel`,
       {
