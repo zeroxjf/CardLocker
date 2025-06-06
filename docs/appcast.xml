@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"
+     version="2.0">
+  <channel>
+    <title>CardLocker Updates</title>
+    <link>https://zeroxjf.github.io/CardLocker/</link>
+    <description>Latest updates for CardLocker</description>
+    <language>en</language>
+
+    <item>
+      <title>Version 1.1</title>
+      <pubDate>Wed, 05 Jun 2025 18:00:00 +0000</pubDate>
+      <enclosure
+        url="https://github.com/zeroxjf/CardLocker/releases/download/v1.1/CardLocker-1.1.zip"
+        sparkle:version="11"
+        sparkle:shortVersionString="1.1"
+        sparkle:edSignature="INSERT_SIGNATURE_HERE"
+        length="12603519"
+        type="application/octet-stream"/>
+    </item>
+  </channel>
+</rss>
